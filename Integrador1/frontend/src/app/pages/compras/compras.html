@@ -1,0 +1,126 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Compras</h1>
+      <p>Lo que le pides a tus proveedores. Toca «Pendiente» cuando llegue el pedido.</p>
+    </div>
+    <button type="button" class="btn btn-primario" (click)="abrir()"><app-icono nombre="mas" /> Nueva compra</button>
+  </header>
+
+  @if (pendientes().length) {
+    <p class="aviso-pendiente">
+      <app-icono nombre="reloj" />
+      <span>Tienes <strong>{{ pendientes().length }}</strong> {{ pendientes().length === 1 ? 'pedido por llegar' : 'pedidos por llegar' }} por
+      <strong>{{ moneda() }} {{ montoPendiente() | number: '1.2-2' }}</strong>.</span>
+    </p>
+  }
+
+  <div class="filtros" role="group" aria-label="Filtrar compras">
+    <button type="button" class="chip" [class.activo]="filtro() === 'todas'" (click)="filtro.set('todas')">Todas <b>{{ ordenadas().length }}</b></button>
+    <button type="button" class="chip" [class.activo]="filtro() === 'Pendiente'" (click)="filtro.set('Pendiente')">Pendientes <b>{{ pendientes().length }}</b></button>
+    <button type="button" class="chip" [class.activo]="filtro() === 'Recibido'" (click)="filtro.set('Recibido')">Recibidas <b>{{ recibidas() }}</b></button>
+  </div>
+
+  <section class="hoja">
+    @if (ordenadas().length === 0) {
+      <app-vacio icono="bolsa" titulo="Sin compras todavía" texto="Cuando pidas mercadería a un proveedor, anótalo aquí.">
+        <button type="button" class="btn btn-primario" (click)="abrir()"><app-icono nombre="mas" /> Registrar compra</button>
+      </app-vacio>
+    } @else if (filtradas().length === 0) {
+      <app-vacio icono="check-circulo" titulo="Nada en esta lista" texto="No hay compras con ese estado." />
+    } @else {
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr><th>Proveedor</th><th>Detalle</th><th class="num">Cant.</th><th>Fecha</th><th class="num">Costo</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            @for (c of filtradas(); track c.id) {
+              <tr>
+                <td><strong>{{ c.proveedor }}</strong></td>
+                <td>{{ c.descripcion }}</td>
+                <td class="num">{{ c.cantidad }}</td>
+                <td>{{ c.fecha }}</td>
+                <td class="num"><strong>{{ moneda() }} {{ c.costoTotal | number: '1.2-2' }}</strong></td>
+                <td>
+                  @if (c.estado === 'Pendiente') {
+                    <button type="button" class="insignia insignia-aviso" [attr.aria-label]="'Marcar como recibida la compra a ' + c.proveedor" title="Marcar como recibido"
+                            (click)="marcarRecibida(c)"><app-icono nombre="reloj" [tamano]="14" /> Pendiente</button>
+                  } @else {
+                    <span class="insignia insignia-ok"><app-icono nombre="check" [tamano]="14" /> Recibido</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+@if (modalAbierto()) {
+  <app-modal titulo="Nueva compra" (cerrar)="modalAbierto.set(false)">
+    <form (ngSubmit)="guardar()" novalidate>
+      <div class="campo">
+        <label for="c-prov">Proveedor</label>
+        <input id="c-prov" name="proveedor" type="text" list="lista-proveedores" [(ngModel)]="form.proveedor" />
+        <datalist id="lista-proveedores">
+          @for (p of proveedores(); track p.id) { <option [value]="p.empresa"></option> }
+        </datalist>
+      </div>
+      <div class="campo">
+        <label for="c-desc">Producto del almacén</label>
+        <input
+          id="c-desc"
+          name="descripcion"
+          type="text"
+          list="lista-productos-compras"
+          [(ngModel)]="form.descripcion"
+          (ngModelChange)="alCambiarProducto($event)"
+          placeholder="Seleccionar producto del inventario..."
+        />
+        <datalist id="lista-productos-compras">
+          @for (p of productos(); track p.id) {
+            <option [value]="p.nombre">Stock actual: {{ p.stock }} {{ p.unidad }}</option>
+          }
+        </datalist>
+      </div>
+
+      <div class="campos-2">
+        <div class="campo">
+          <label for="c-cant">Cantidad comprada</label>
+          <input id="c-cant" name="cantidad" type="number" min="1" [(ngModel)]="form.cantidad" placeholder="Ej. 20" />
+        </div>
+        <div class="campo">
+          <label for="c-costo">Costo total ({{ moneda() }})</label>
+          <input id="c-costo" name="costoTotal" type="number" min="0" step="0.01" [(ngModel)]="form.costoTotal" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="c-estado">Recepción e ingreso al inventario</label>
+        <select id="c-estado" name="estado" [(ngModel)]="form.estado">
+          <option value="Recibido">Recibido (Sumar al stock de inventario de inmediato)</option>
+          <option value="Pendiente">Pendiente (Por recibir - sumar stock al llegar el pedido)</option>
+        </select>
+        <small style="color: var(--texto-suave); font-size: 11.5px; margin-top: 4px; display: block;">
+          @if (form.estado === 'Recibido') {
+            ✓ Las unidades se sumarán de inmediato al stock del almacén.
+          } @else {
+            ⏳ Se sumarán al stock en cuanto toques «Pendiente» en la tabla al llegar la mercadería.
+          }
+        </small>
+      </div>
+
+      @if (errorForm()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorForm() }}</p>
+      }
+
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="modalAbierto.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Registrar</button>
+      </div>
+    </form>
+  </app-modal>
+}

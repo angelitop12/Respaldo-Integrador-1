@@ -1,0 +1,74 @@
+<div class="acceso">
+  <section class="acceso-marca">
+    <span class="sello-marca"><app-icono nombre="usuario-mas" [tamano]="28" /></span>
+    <h1>Únete a ToolStore</h1>
+    <p>Crea tu cuenta y empieza a llevar el control de tu ferretería.</p>
+  </section>
+
+  <section class="acceso-tag">
+    <div class="tarjeta-envoltura">
+      <form class="tarjeta-acceso" [class.sacudir]="sacudiendo()" (animationend)="finAnimacion($event)"
+            (ngSubmit)="registrar()" novalidate>
+        <h2>Crear cuenta</h2>
+        <p class="subtitulo">Solo toma un minuto.</p>
+
+        <div class="campo">
+          <label for="nombre">Nombre completo</label>
+          <input id="nombre" name="nombre" type="text" autocomplete="name" [(ngModel)]="nombre" />
+        </div>
+
+        <div class="campos-2">
+          <div class="campo">
+            <label for="correo">Correo</label>
+            <input id="correo" name="correo" type="email" autocomplete="email" placeholder="correo@ferreteria.com" [(ngModel)]="correo" />
+          </div>
+          <div class="campo">
+            <label for="usuario">Usuario</label>
+            <input id="usuario" name="usuario" type="text" autocomplete="username" [(ngModel)]="usuario" />
+          </div>
+        </div>
+
+        <div class="campo campo-clave">
+          <label for="password">Contraseña</label>
+          <input id="password" name="password" autocomplete="new-password"
+                 [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="password" />
+          <button type="button" class="btn-icono" [attr.aria-label]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  (click)="verPassword.set(!verPassword())">
+            <app-icono [nombre]="verPassword() ? 'ojo-tachado' : 'ojo'" />
+          </button>
+        </div>
+
+        <div class="campo campo-clave">
+          <label for="confirmarPassword">Confirmar contraseña</label>
+          <input id="confirmarPassword" name="confirmarPassword" autocomplete="new-password"
+                 [type]="verConfirmar() ? 'text' : 'password'" [(ngModel)]="confirmarPassword" />
+          <button type="button" class="btn-icono" [attr.aria-label]="verConfirmar() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                  (click)="verConfirmar.set(!verConfirmar())">
+            <app-icono [nombre]="verConfirmar() ? 'ojo-tachado' : 'ojo'" />
+          </button>
+        </div>
+
+        @if (error()) {
+          <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ error() }}</p>
+        }
+
+        <button type="submit" class="btn btn-primario btn-ancho" [disabled]="exito() || cargando()">
+          {{ cargando() ? 'Creando cuenta...' : 'Crear cuenta' }}
+        </button>
+
+        <p class="enlace">¿Ya tienes cuenta? <button type="button" (click)="irALogin()">Volver al login</button></p>
+
+        @if (exito()) {
+          <div class="exito dibujar" role="status">
+            <span class="marca-ok"><app-icono nombre="check-circulo" [tamano]="44" /></span>
+            <h3>Cuenta creada</h3>
+            <p>Te llevamos al login…</p>
+            <span class="carga"><i></i></span>
+          </div>
+        }
+      </form>
+    </div>
+  </section>
+
+  <app-regla />
+</div>

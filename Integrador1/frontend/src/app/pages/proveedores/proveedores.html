@@ -1,0 +1,100 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Proveedores</h1>
+      <p>Las empresas que te surten la mercadería.</p>
+    </div>
+    <button type="button" class="btn btn-primario" (click)="abrirNuevo()"><app-icono nombre="mas" /> Nuevo proveedor</button>
+  </header>
+
+  <div class="barra-herramientas">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" placeholder="Buscar empresa, contacto o producto" aria-label="Buscar proveedor"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <span class="resultados">{{ filtrados().length }} de {{ proveedores().length }}</span>
+  </div>
+
+  <section class="hoja">
+    @if (proveedores().length === 0) {
+      <app-vacio icono="camion" titulo="Sin proveedores" texto="Registra a quién le compras para tenerlo a la mano cuando repongas.">
+        <button type="button" class="btn btn-primario" (click)="abrirNuevo()"><app-icono nombre="mas" /> Agregar proveedor</button>
+      </app-vacio>
+    } @else if (filtrados().length === 0) {
+      <app-vacio icono="buscar" titulo="Sin resultados" texto="Ningún proveedor coincide con tu búsqueda." />
+    } @else {
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr><th>Empresa</th><th>Contacto</th><th>Qué nos vende</th><th>Estado</th><th class="acciones"><span class="sr-only">Acciones</span></th></tr>
+          </thead>
+          <tbody>
+            @for (p of filtrados(); track p.id) {
+              <tr [class.inactivo]="!p.activo">
+                <td><strong>{{ p.empresa }}</strong></td>
+                <td>
+                  {{ p.contacto || '—' }}
+                  @if (p.telefono) { <small>{{ p.telefono }}</small> }
+                  @if (p.email) { <small>{{ p.email }}</small> }
+                </td>
+                <td>{{ p.productos || '—' }}</td>
+                <td>
+                  <label class="estado-fila">
+                    <span class="palanca">
+                      <input type="checkbox" role="switch" [checked]="p.activo" (change)="cambiarEstado(p)" [attr.aria-label]="p.empresa + ' activo'" />
+                      <span class="pista"></span>
+                    </span>
+                    {{ p.activo ? 'Activo' : 'Inactivo' }}
+                  </label>
+                </td>
+                <td class="acciones">
+                  <button type="button" class="btn-icono" [attr.aria-label]="'Editar ' + p.empresa" (click)="abrirEditar(p)"><app-icono nombre="lapiz" /></button>
+                  <button type="button" class="btn-icono peligro" [attr.aria-label]="'Eliminar ' + p.empresa" (click)="eliminar(p)"><app-icono nombre="papelera" /></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+@if (modalAbierto()) {
+  <app-modal [titulo]="editandoId() === null ? 'Nuevo proveedor' : 'Editar proveedor'" (cerrar)="modalAbierto.set(false)">
+    <form (ngSubmit)="guardar()" novalidate>
+      <div class="campo">
+        <label for="pr-empresa">Empresa</label>
+        <input id="pr-empresa" name="empresa" type="text" [(ngModel)]="form.empresa" />
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="pr-contacto">Persona de contacto</label>
+          <input id="pr-contacto" name="contacto" type="text" [(ngModel)]="form.contacto" />
+        </div>
+        <div class="campo">
+          <label for="pr-tel">Teléfono</label>
+          <input id="pr-tel" name="telefono" type="tel" [(ngModel)]="form.telefono" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="pr-mail">Correo</label>
+        <input id="pr-mail" name="email" type="email" [(ngModel)]="form.email" />
+      </div>
+      <div class="campo">
+        <label for="pr-prod">Qué nos vende</label>
+        <input id="pr-prod" name="productos" type="text" placeholder="Ej. Cables, interruptores" [(ngModel)]="form.productos" />
+      </div>
+
+      @if (errorForm()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorForm() }}</p>
+      }
+
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="modalAbierto.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Guardar</button>
+      </div>
+    </form>
+  </app-modal>
+}

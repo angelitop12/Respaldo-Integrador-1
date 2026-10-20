@@ -1,0 +1,8 @@
+:host { display: block; }
+.aviso-pendiente {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 18px; padding: 12px 16px;
+  color: var(--texto); background: var(--aviso-suave);
+  border: 1px solid color-mix(in srgb, var(--aviso) 35%, transparent); border-radius: var(--radio);
+}
+.aviso-pendiente app-icono { flex: none; color: var(--aviso); }
+.aviso-pendiente strong { font-family: var(--fuente-mono); font-weight: 600; }

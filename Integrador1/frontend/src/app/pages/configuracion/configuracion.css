@@ -1,0 +1,10 @@
+:host { display: block; }
+.secciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; max-width: 1100px; }
+.seccion { padding: 24px 26px 26px; }
+.seccion h2 { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; font-size: 20px; }
+.seccion h2 app-icono { padding: 7px; box-sizing: content-box; color: var(--acento-texto); background: var(--acento-suave); border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent); border-radius: 9px; }
+.preferencia { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0; padding: 14px 0; border-top: 1px solid var(--borde); font-weight: 400; color: var(--texto); cursor: pointer; }
+.preferencia:first-of-type { border-top: 0; padding-top: 0; }
+.preferencia strong { display: block; font-weight: 600; }
+.preferencia small { color: var(--texto-suave); }
+@media (max-width: 1000px) { .secciones { grid-template-columns: minmax(0, 1fr); } }

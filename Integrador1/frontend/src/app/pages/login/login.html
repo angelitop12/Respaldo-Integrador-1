@@ -1,0 +1,48 @@
+<div class="acceso">
+  <section class="acceso-marca">
+    <span class="sello-marca"><app-icono nombre="llave" [tamano]="28" /></span>
+    <h1>ToolStore</h1>
+    <p>El control de tu ferretería: inventario, ventas y clientes en un solo tablero.</p>
+    <ul>
+      <li><app-icono nombre="caja" [tamano]="18" /> Stock siempre a la vista</li>
+      <li><app-icono nombre="carrito" [tamano]="18" /> Ventas del día al instante</li>
+      <li><app-icono nombre="informe" [tamano]="18" /> Reportes sin papeles</li>
+    </ul>
+    <p class="estado-sistema"><i></i> Sistema en línea</p>
+  </section>
+
+  <section class="acceso-tag">
+    <form class="tarjeta-acceso" [class.sacudir]="sacudiendo()" (animationend)="finAnimacion($event)"
+          (ngSubmit)="iniciarSesion()" novalidate>
+      <h2>Iniciar sesión</h2>
+      <p class="subtitulo">Entra para abrir la tienda.</p>
+
+      <div class="campo">
+        <label for="usuario">Usuario</label>
+        <input id="usuario" name="usuario" type="text" autocomplete="username" [(ngModel)]="usuario" />
+      </div>
+
+      <div class="campo campo-clave">
+        <label for="password">Contraseña</label>
+        <input id="password" name="password" autocomplete="current-password"
+               [type]="verPassword() ? 'text' : 'password'" [(ngModel)]="password" />
+        <button type="button" class="btn-icono" [attr.aria-label]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                (click)="verPassword.set(!verPassword())">
+          <app-icono [nombre]="verPassword() ? 'ojo-tachado' : 'ojo'" />
+        </button>
+      </div>
+
+      @if (error()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ error() }}</p>
+      }
+
+      <button type="submit" class="btn btn-primario btn-ancho" [disabled]="cargando()">
+        {{ cargando() ? 'Iniciando sesión...' : 'Entrar' }}
+      </button>
+
+      <p class="enlace">¿Aún no tienes cuenta? <button type="button" (click)="irARegistro()">Regístrate</button></p>
+    </form>
+  </section>
+
+  <app-regla />
+</div>

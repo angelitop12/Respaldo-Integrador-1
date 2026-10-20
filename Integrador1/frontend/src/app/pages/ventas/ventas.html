@@ -1,0 +1,267 @@
+<header class="encabezado">
+  <div>
+    <h1>Ventas</h1>
+    <p>El registro de todo lo que sale por el mostrador.</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="abrir()"><app-icono nombre="mas" /> Nueva venta</button>
+</header>
+
+<div class="resumen">
+  <div class="acumulado">
+    <span>{{ metodo() === 'Todos' ? 'Total acumulado' : 'Total en ' + metodo() }}:</span>
+    <strong><small>S/ </small><app-contador [valor]="totalAcumulado()" [decimales]="2" [duracion]="700" /></strong>
+  </div>
+  <div class="resumen-der">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" placeholder="Buscar cliente o código" aria-label="Buscar venta" 
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <p class="resultados-venta">{{ filtradas().length }} {{ filtradas().length === 1 ? 'venta' : 'ventas' }}</p>
+  </div>
+</div>
+
+<div class="filtros" role="group" aria-label="Filtrar por método de pago">
+  <button type="button" class="chip" [class.activo]="metodo() === 'Todos'" (click)="metodo.set('Todos')">Todos</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Efectivo'" (click)="metodo.set('Efectivo')">Efectivo</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Tarjeta'" (click)="metodo.set('Tarjeta')">Tarjeta</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Yape/Plin'" (click)="metodo.set('Yape/Plin')">Yape/Plin</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Transferencia'" (click)="metodo.set('Transferencia')">Transferencia</button>
+</div>
+
+<section class="hoja">
+  @if (ordenadas().length === 0) {
+    <app-vacio icono="carrito" titulo="Aún no hay ventas" texto="Registra la primera venta del día y aparecerá aquí.">
+      <button type="button" class="btn btn-primary" (click)="abrir()"><app-icono nombre="mas" /> Registrar venta</button>
+    </app-vacio>
+  } @else if (filtradas().length === 0) {
+    <app-vacio icono="buscar" titulo="Sin resultados" texto="No hay ventas con ese filtro." />
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr><th>Código</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Pago</th><th class="num">Total</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (v of filtradas(); track v.id) {
+            <tr
+              class="fila-venta"
+              [class.fila-abierta]="filaExpandidaId() === v.id"
+              [style.opacity]="v.estado === 'ANULADA' ? '0.6' : '1'"
+              (click)="alternarFila(v.id)"
+            >
+              <td>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <strong class="codigo">{{ v.id }}</strong>
+                  @if (v.estado === 'ANULADA') {
+                    <span class="insignia insignia-aviso" style="font-size: 11px; color: #f87171; border-color: rgba(239,68,68,0.3);">Anulada</span>
+                  }
+                </div>
+              </td>
+              <td>{{ v.fecha }} <small>{{ v.hora }}</small></td>
+              <td>{{ v.cliente }}</td>
+              <td>{{ v.vendedor }}</td>
+              <td><span class="insignia">{{ v.metodoPago }}</span></td>
+              <td class="num">
+                <strong [style.text-decoration]="v.estado === 'ANULADA' ? 'line-through' : 'none'">
+                  <small>S/ </small>{{ v.total | number: '1.2-2' }}
+                </strong>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; align-items: center; gap: 6px;">
+                  @if (v.estado !== 'ANULADA') {
+                    <button type="button" class="btn-icono peligro" title="Anular venta" (click)="$event.stopPropagation(); eliminar(v.id)">
+                      <app-icono nombre="papelera" />
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="btn-icono"
+                    [title]="filaExpandidaId() === v.id ? 'Cerrar detalle' : 'Ver detalle de la venta'"
+                    (click)="$event.stopPropagation(); alternarFila(v.id)"
+                  >
+                    <app-icono
+                      nombre="chevron-abajo"
+                      [style.transform]="filaExpandidaId() === v.id ? 'rotate(180deg)' : 'rotate(0deg)'"
+                      style="transition: transform 0.2s ease; display: inline-block;"
+                    />
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            @if (filaExpandidaId() === v.id) {
+              <tr class="fila-detalle-abierta">
+                <td colspan="7">
+                  <div class="panel-detalle-venta" (click)="$event.stopPropagation()">
+                    <div class="cabecera-detalle-venta">
+                      <div class="info-principal-venta">
+                        <span class="etiqueta-comprobante"><app-icono nombre="recibo" [tamano]="16" /> Detalle de Venta {{ v.id }}</span>
+                        <span class="separador-punto">·</span>
+                        <span class="fecha-comprobante">{{ v.fecha }} a las {{ v.hora }}</span>
+                        @if (v.estado === 'ANULADA') {
+                          <span class="badge-anulado-pill">Venta Anulada</span>
+                        } @else {
+                          <span class="badge-emitido-pill">Completada</span>
+                        }
+                      </div>
+                      <button type="button" class="btn-cerrar-detalle" (click)="alternarFila(v.id)">
+                        <app-icono nombre="cerrar" [tamano]="14" /> Cerrar detalle
+                      </button>
+                    </div>
+
+                    <div class="tarjetas-resumen-venta">
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Cliente</span>
+                        <strong>{{ v.cliente || 'Cliente General' }}</strong>
+                      </div>
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Vendedor</span>
+                        <strong>{{ v.vendedor || 'Mostrador' }}</strong>
+                      </div>
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Forma de Pago</span>
+                        <span class="insignia-pago-tag">{{ v.metodoPago }}</span>
+                      </div>
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Total Liquidado</span>
+                        <strong class="total-destacado">S/ {{ v.total | number: '1.2-2' }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="seccion-articulos-venta">
+                      <h4><app-icono nombre="caja" [tamano]="16" /> Desglose de Productos Vendidos</h4>
+                      @if (v.items && v.items.length > 0) {
+                        <div class="tabla-envoltorio-articulos">
+                          <table class="tabla-articulos">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Producto</th>
+                                <th class="num">Cantidad</th>
+                                <th class="num">Precio Unit.</th>
+                                <th class="num">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (item of v.items; track item.id || $index; let idx = $index) {
+                                <tr>
+                                  <td class="col-num">{{ idx + 1 }}</td>
+                                  <td><strong>{{ item.producto }}</strong></td>
+                                  <td class="num">{{ item.cantidad | number: '1.0-2' }}</td>
+                                  <td class="num">S/ {{ item.precio | number: '1.2-2' }}</td>
+                                  <td class="num"><strong style="color: var(--acento-texto);">S/ {{ item.subtotal | number: '1.2-2' }}</strong></td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      } @else {
+                        <p class="sin-items-detalle">Esta venta se registró como comprobante general por un total de <b>S/ {{ v.total | number: '1.2-2' }}</b>.</p>
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<!-- MODAL INTEGRADO CON EL CARRITO (LÓGICA FULLSTACK) -->
+@if (modalAbierto()) {
+  <app-modal titulo="Punto de Venta (POS)" (cerrar)="modalAbierto.set(false)">
+    
+    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+      <div style="flex: 1;">
+        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #94a3b8; font-weight: 500;">Cliente</label>
+        <input type="text" [(ngModel)]="form.cliente" placeholder="Nombre del cliente" style="width: 100%; padding: 8px 10px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #f8fafc;" />
+      </div>
+      <div style="flex: 1;">
+        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #94a3b8; font-weight: 500;">Vendedor</label>
+        <input type="text" [(ngModel)]="form.vendedor" placeholder="Quién atendió" style="width: 100%; padding: 8px 10px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #f8fafc;" />
+      </div>
+      <div style="flex: 1;">
+        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #94a3b8; font-weight: 500;">Método de pago</label>
+        <select [(ngModel)]="form.metodoPago" style="width: 100%; padding: 8px 10px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #f8fafc;">
+          <option>Efectivo</option>
+          <option>Tarjeta</option>
+          <option>Yape/Plin</option>
+          <option>Transferencia</option>
+        </select>
+      </div>
+    </div>
+
+  <hr style="margin: 15px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);" />
+
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-end;">
+      <div style="flex: 2;">
+        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #94a3b8; font-weight: 500;">Agregar Productos al Carrito</label>
+        <select [(ngModel)]="formProducto.id" style="width: 100%; padding: 8px 10px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #f8fafc;">
+          <option value="">-- Seleccionar producto del catálogo --</option>
+          @for (p of productos(); track p.id) {
+            <option [value]="p.id">{{ p.nombre }} (Quedan: {{ p.stock }}) - S/ {{ p.precio }}</option>
+          }
+        </select>
+      </div>
+      <div style="flex: 0.7;">
+        <label style="display: block; margin-bottom: 6px; font-size: 13px; color: #94a3b8; font-weight: 500;">Cantidad</label>
+        <input type="number" [(ngModel)]="formProducto.cantidad" min="1" placeholder="Cant." style="width: 100%; padding: 8px 10px; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #f8fafc;" />
+      </div>
+      <div>
+        <button type="button" class="btn btn-primary" (click)="agregarAlCarritoMunoz()" style="height: 36px;">
+          <i class="fa-solid fa-plus"></i> Agregar
+        </button>
+      </div>
+    </div>
+
+    <div style="margin-top: 15px; max-height: 220px; overflow-y: auto; padding: 0; border: 1px solid #334155; border-radius: 8px;">
+      <table style="width: 100%; margin: 0; border-collapse: collapse;">
+        <thead style="background: #1e293b; color: #e2e8f0; border-bottom: 1px solid #334155;">
+          <tr>
+            <th style="padding: 10px 12px; text-align: left; font-size: 13px; font-weight: 600;">Producto</th>
+            <th style="padding: 10px; text-align: center; font-size: 13px; font-weight: 600;">Cant.</th>
+            <th style="padding: 10px; text-align: right; font-size: 13px; font-weight: 600;">Precio</th>
+            <th style="padding: 10px; text-align: right; font-size: 13px; font-weight: 600;">Subtotal</th>
+            <th style="padding: 10px; width: 40px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (carrito().length === 0) {
+            <tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">El carrito está vacío</td></tr>
+          }
+          @for (item of carrito(); track item.producto_id) {
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+              <td style="padding: 10px 12px;">{{ item.nombre }}</td>
+              <td style="padding: 10px; text-align: center;">{{ item.cantidad }}</td>
+              <td style="padding: 10px; text-align: right; white-space: nowrap;">S/ {{ item.precio | number: '1.2-2' }}</td>
+              <td style="padding: 10px; text-align: right; white-space: nowrap;"><strong>S/ {{ (item.cantidad * item.precio) | number: '1.2-2' }}</strong></td>
+              <td style="padding: 10px; text-align: center;">
+                <button 
+                  type="button" 
+                  title="Quitar del carrito"
+                  style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; cursor: pointer; color: #ef4444; font-weight: 700; font-size: 14px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; line-height: 1;" 
+                  (click)="eliminarDelCarrito(item.producto_id)">
+                  ✕
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div style="text-align: right; margin-top: 15px;">
+      <span style="font-size: 1.1rem; color: #64748b;">Total a cobrar: </span>
+      <strong style="font-size: 1.5rem; color: #10b981;">S/ {{ totalCarrito() | number: '1.2-2' }}</strong>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+      <button type="button" class="btn btn-outline" (click)="modalAbierto.set(false)">Cancelar</button>
+      <button type="button" class="btn btn-primary" (click)="registrarVentaMunoz()"><i class="fa-solid fa-check-double"></i> Procesar Venta</button>
+    </div>
+  </app-modal>
+}

@@ -1,0 +1,102 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>{{ saludo }}</h1>
+      <p>{{ fechaHoy }} · así va la tienda.</p>
+    </div>
+    <a routerLink="/ventas" class="btn btn-primario"><app-icono nombre="carrito" /> Ir a ventas</a>
+  </header>
+
+  <section class="portada">
+    <div class="placa">
+      <span class="placa-etiqueta"><i class="vivo"></i> Vendido hoy</span>
+      <p class="placa-cifra"><small>{{ moneda() }}</small><app-contador [valor]="totalHoy()" [decimales]="2" /></p>
+      <p class="placa-pie">
+        {{ ventasHoy().length }} {{ ventasHoy().length === 1 ? 'venta registrada' : 'ventas registradas' }}
+      </p>
+    </div>
+
+    <dl class="datos">
+      <div class="dato">
+        <dt><app-icono nombre="caja" [tamano]="18" /> Productos en catálogo</dt>
+        <dd><app-contador [valor]="totalProductos()" /></dd>
+      </div>
+      <div class="dato" [class.dato-alerta]="stockBajo().length > 0">
+        <dt><app-icono nombre="alerta" [tamano]="18" /> Con stock bajo</dt>
+        <dd><app-contador [valor]="stockBajo().length" /></dd>
+      </div>
+      <div class="dato">
+        <dt><app-icono nombre="tendencia" [tamano]="18" /> Ganancia del mes</dt>
+        <dd [class.negativo]="ganancia() < 0"><small>{{ moneda() }}</small><app-contador [valor]="ganancia()" [decimales]="2" /></dd>
+      </div>
+    </dl>
+  </section>
+
+  <div class="rejilla">
+    <section class="hoja grafico" [class.ancho]="!avisarStock()">
+      <div class="hoja-titulo">
+        <h2>Ventas por mes</h2>
+        <p>Los últimos seis meses.</p>
+      </div>
+      @if (hayVentasMeses()) {
+        <div class="barras" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; align-items: end; height: 210px; padding-top: 24px;">
+          @for (m of meses(); track m.etiqueta; let i = $index) {
+            <div class="barra" [class.actual]="m.actual" style="height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;">
+              <span class="barra-valor" style="margin-bottom: 6px;">{{ moneda() }} {{ m.total | number: '1.0-0' }}</span>
+              <span class="barra-columna" [style.height.%]="m.alto" [style.animation-delay.ms]="i * 90" style="width: 100%; max-width: 58px; border-radius: 6px 6px 0 0; display: block;"></span>
+              <span class="barra-mes" style="margin-top: 8px;">{{ m.etiqueta }}</span>
+            </div>
+          }
+        </div>
+      } @else {
+        <app-vacio icono="tendencia" titulo="Aún no hay ventas" texto="Cuando registres ventas, aquí verás cómo crecen mes a mes." />
+      }
+    </section>
+
+    @if (avisarStock()) {
+    <section class="hoja alertas">
+      <div class="hoja-titulo">
+        <h2>Por reponer</h2>
+        <p>Lo que ya llegó a su mínimo.</p>
+      </div>
+      @if (alertas().length) {
+        <ul class="lista-alertas">
+          @for (p of alertas(); track p.id) {
+            <li>
+              <div class="alerta-fila">
+                <strong>{{ p.nombre }}</strong>
+                <span>{{ p.stock }} / {{ p.stockMinimo }} {{ p.unidad }}</span>
+              </div>
+              <div class="medidor bajo">
+                <div class="medidor-relleno" [style.width.%]="p.nivel"></div>
+                <span class="medidor-minimo" style="left: 50%"></span>
+              </div>
+            </li>
+          }
+        </ul>
+        <a routerLink="/inventario" class="ver-todo">Abrir inventario →</a>
+      } @else {
+        <app-vacio icono="check-circulo" titulo="Todo en orden" texto="Ningún producto está por debajo de su mínimo." />
+      }
+    </section>
+    }
+
+    <section class="hoja registro">
+      <h2>Últimas ventas</h2>
+      <p class="registro-sub">{{ almacen.empresa().nombre }}</p>
+      @if (ultimas().length) {
+        <ul>
+          @for (v of ultimas(); track v.id) {
+            <li>
+              <span class="r-cod">{{ v.id }}</span>
+              <span class="r-cli">{{ v.cliente }}<small>{{ v.fecha }} · {{ v.hora }} · {{ v.metodoPago }}</small></span>
+              <span class="r-tot">{{ moneda() }} {{ v.total | number: '1.2-2' }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="registro-vacio">Todavía no hay ventas.</p>
+      }
+    </section>
+  </div>
+</div>

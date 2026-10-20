@@ -1,0 +1,86 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Reportes</h1>
+      <p>Incidencias, sugerencias y avisos del equipo. Toca uno para ver el detalle.</p>
+    </div>
+    <button type="button" class="btn btn-primario" (click)="abrir()"><app-icono nombre="bandera" /> Nuevo reporte</button>
+  </header>
+
+  <div class="filtros" role="group" aria-label="Filtrar reportes">
+    <button type="button" class="chip" [class.activo]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos <b>{{ total() }}</b></button>
+    @for (e of estados; track e) {
+      <button type="button" class="chip" [class.activo]="filtro() === e" (click)="filtro.set(e)">{{ e }} <b>{{ cuantos(e) }}</b></button>
+    }
+  </div>
+
+  @if (total() === 0) {
+    <section class="hoja">
+      <app-vacio icono="informe" titulo="Sin reportes" texto="Si algo falla o tienes una idea para la tienda, anótalo aquí.">
+        <button type="button" class="btn btn-primario" (click)="abrir()"><app-icono nombre="bandera" /> Crear reporte</button>
+      </app-vacio>
+    </section>
+  } @else if (filtrados().length === 0) {
+    <section class="hoja"><app-vacio icono="check-circulo" titulo="Nada en esta lista" texto="No hay reportes con ese estado." /></section>
+  } @else {
+    <ul class="lista">
+      @for (r of filtrados(); track r.id) {
+        <li class="reporte" [class.abierto]="abierto() === r.id">
+          <button type="button" class="reporte-cabecera" [attr.aria-expanded]="abierto() === r.id" [attr.aria-controls]="'rep-' + r.id" (click)="alternar(r.id)">
+            <span class="reporte-icono"><app-icono nombre="bandera" [tamano]="20" /></span>
+            <span class="reporte-titulo">
+              <strong>{{ r.titulo }}</strong>
+              <small>{{ r.categoria }} · {{ r.autor }} · {{ r.fecha }}</small>
+            </span>
+            <span class="insignia" [class]="clase(r.estado)">{{ r.estado }}</span>
+            <app-icono class="flecha" nombre="chevron-abajo" />
+          </button>
+          <div class="reporte-cuerpo" [id]="'rep-' + r.id">
+            <div class="reporte-interior">
+              <p>{{ r.descripcion }}</p>
+              <div class="reporte-acciones">
+                <label class="estado-select">
+                  Estado
+                  <select [ngModel]="r.estado" (ngModelChange)="cambiarEstado(r, $event)" [name]="'estado-' + r.id">
+                    @for (e of estados; track e) { <option [value]="e">{{ e }}</option> }
+                  </select>
+                </label>
+                <button type="button" class="btn-icono peligro" [attr.aria-label]="'Eliminar ' + r.titulo" (click)="eliminar(r)"><app-icono nombre="papelera" /></button>
+              </div>
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <app-modal titulo="Nuevo reporte" (cerrar)="modalAbierto.set(false)">
+    <form (ngSubmit)="guardar()" novalidate>
+      <div class="campo">
+        <label for="r-titulo">Título</label>
+        <input id="r-titulo" name="titulo" type="text" [(ngModel)]="form.titulo" />
+      </div>
+      <div class="campo">
+        <label for="r-cat">Tipo</label>
+        <select id="r-cat" name="categoria" [(ngModel)]="form.categoria">
+          @for (c of categorias; track c) { <option [value]="c">{{ c }}</option> }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="r-desc">¿Qué pasó?</label>
+        <textarea id="r-desc" name="descripcion" [(ngModel)]="form.descripcion"></textarea>
+      </div>
+
+      @if (errorForm()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorForm() }}</p>
+      }
+
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="modalAbierto.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Enviar</button>
+      </div>
+    </form>
+  </app-modal>
+}

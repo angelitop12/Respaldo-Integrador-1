@@ -1,0 +1,3 @@
+:host { display: block; }
+.estado-fila { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-weight: 500; color: var(--texto); cursor: pointer; }
+tr.inactivo td:not(:nth-last-child(-n+2)) { opacity: 0.5; }

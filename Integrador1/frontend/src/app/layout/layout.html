@@ -1,0 +1,70 @@
+<div class="armazon" [attr.data-modo]="modo()" [class.temp]="abiertoTemp()" [class.movil-abierto]="menuMovil()">
+
+  <!-- Barra superior: solo en pantallas pequeñas -->
+  <header class="barra-movil">
+    <button type="button" class="btn-icono" aria-label="Abrir menú" (click)="menuMovil.set(true)">
+      <app-icono nombre="menu" [tamano]="22" />
+    </button>
+    <span class="marca-movil"><app-icono nombre="llave" [tamano]="18" /> ToolStore</span>
+  </header>
+
+  @if (menuMovil()) {
+    <div class="cortina" (click)="menuMovil.set(false)"></div>
+  }
+
+  <!-- Menú oculto: botón para invocarlo y franja sensible en el borde izquierdo -->
+  @if (modo() === 'oculto') {
+    <button type="button" class="invocador" aria-label="Mostrar menú (Ctrl + B)" title="Mostrar menú (Ctrl + B)"
+            [attr.aria-expanded]="abiertoTemp()" (click)="invocar()">
+      <app-icono nombre="menu" [tamano]="20" />
+    </button>
+    <div class="zona-borde" aria-hidden="true" (pointerenter)="entraBorde()"></div>
+  }
+
+  <aside class="riel" aria-label="Navegación principal" (pointerleave)="saleMenu()">
+    <div class="marca">
+      <span class="marca-sello"><app-icono nombre="llave" [tamano]="22" /></span>
+      <span class="txt marca-texto"><strong>ToolStore</strong><small>Sistema de gestión</small></span>
+    </div>
+
+    <nav>
+      @for (item of menu; track item.ruta) {
+        <a class="item" [routerLink]="item.ruta" routerLinkActive="activo" (click)="irA()">
+          <app-icono [nombre]="item.icono" />
+          <span class="txt">{{ item.texto }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="pie">
+      <button type="button" class="item" (click)="alternarFijo()" [attr.aria-pressed]="modo() === 'fijo'">
+        <app-icono nombre="pin" />
+        <span class="txt">{{ modo() === 'fijo' ? 'Soltar menú' : 'Fijar menú abierto' }}</span>
+      </button>
+      <button type="button" class="item" (click)="ocultar()" title="Ocultar menú (Ctrl + B)">
+        <app-icono nombre="chevron-izq" />
+        <span class="txt">Ocultar menú <kbd>Ctrl B</kbd></span>
+      </button>
+      <button type="button" class="item" (click)="tema.alternar()">
+        <app-icono [nombre]="tema.claro() ? 'luna' : 'sol'" />
+        <span class="txt">{{ tema.claro() ? 'Tema oscuro' : 'Tema claro' }}</span>
+      </button>
+
+      <div class="usuario">
+        <span class="avatar" aria-hidden="true">{{ sesion.iniciales() }}</span>
+        <span class="txt usuario-datos">
+          <strong>{{ sesion.nombre() }}</strong>
+          <small><i class="punto"></i> En línea</small>
+        </span>
+      </div>
+      <button type="button" class="item salir" (click)="sesion.cerrar()">
+        <app-icono nombre="salir" />
+        <span class="txt">Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="contenido" (click)="alHacerClicContenido()">
+    <router-outlet />
+  </main>
+</div>

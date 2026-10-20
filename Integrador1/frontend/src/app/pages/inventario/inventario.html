@@ -1,0 +1,176 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Inventario</h1>
+      <p>Todo lo que hay en el almacén. Ajusta el stock con los botones − y +.</p>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <button type="button" class="btn" (click)="abrirModalCategoria()"><app-icono nombre="mas" /> Nueva categoría</button>
+      <button type="button" class="btn btn-primario" (click)="abrirNuevo()"><app-icono nombre="mas" /> Nuevo producto</button>
+    </div>
+  </header>
+
+  <div class="barra-herramientas">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" placeholder="Buscar producto o categoría" aria-label="Buscar producto"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <span class="resultados">{{ filtrados().length }} de {{ productos().length }} productos</span>
+  </div>
+
+  <div class="filtros" role="group" aria-label="Filtrar por categoría">
+  <button type="button" class="chip" [class.activo]="categoria() === 'Todas' && !soloBajo()" (click)="categoria.set('Todas'); soloBajo.set(false)">Todas</button>
+  @for (c of categorias(); track c) {
+    <button type="button" class="chip" [class.activo]="categoria() === c && !soloBajo()" (click)="categoria.set(c); soloBajo.set(false)">{{ c }}</button>
+  }
+  <button 
+    type="button" 
+    class="chip chip-bajo chip-alerta bajo peligro" 
+    [class.activo]="soloBajo()"
+    [style.border-color]="soloBajo() ? '#f87171' : ''"
+    [style.background-color]="soloBajo() ? 'rgba(239, 68, 68, 0.14)' : ''"
+    [style.color]="soloBajo() ? '#f87171' : ''"
+    [style.box-shadow]="soloBajo() ? '0 0 12px rgba(239, 68, 68, 0.2)' : ''"
+    (click)="soloBajo.set(!soloBajo()); categoria.set('Todas')">
+    <app-icono nombre="alerta" [tamano]="16" /> Stock bajo <b>{{ cantidadBajo() }}</b>
+  </button>
+</div>
+  <section class="hoja">
+    @if (productos().length === 0) {
+      <app-vacio icono="caja" titulo="El almacén está vacío" texto="Agrega tu primer producto para empezar a controlar el stock.">
+        <button type="button" class="btn btn-primario" (click)="abrirNuevo()"><app-icono nombre="mas" /> Agregar producto</button>
+      </app-vacio>
+    } @else if (filtrados().length === 0) {
+      <app-vacio icono="buscar" titulo="Sin resultados" texto="Ningún producto coincide con lo que buscas. Prueba con otra palabra o quita los filtros." />
+    } @else {
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Stock</th>
+              <th class="nivel-col">Nivel</th>
+              <th class="num">Precio</th>
+              <th class="acciones"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of filtrados(); track p.id) {
+              <tr>
+                <td>
+                  <strong>{{ p.nombre }}</strong>
+                  <small>{{ p.categoria }}</small>
+                </td>
+                <td>
+                  <div class="control-stock">
+                    <button type="button" [attr.aria-label]="'Quitar una unidad de ' + p.nombre" (click)="cambiarStock(p, -1)"><app-icono nombre="menos" [tamano]="16" /></button>
+                    <span class="cantidad" [class.rojo]="estado(p) === 'bajo'">{{ p.stock }}<small>{{ p.unidad }}</small></span>
+                    <button type="button" [attr.aria-label]="'Agregar una unidad de ' + p.nombre" (click)="cambiarStock(p, 1)"><app-icono nombre="mas" [tamano]="16" /></button>
+                  </div>
+                </td>
+                <td class="nivel-col">
+                  <div class="medidor" [class.bajo]="estado(p) === 'bajo'" [class.cerca]="estado(p) === 'cerca'"
+                       [attr.title]="'Mínimo: ' + p.stockMinimo + ' ' + p.unidad">
+                    <div class="medidor-relleno" [style.width.%]="nivel(p)"></div>
+                    <span class="medidor-minimo" style="left: 50%"></span>
+                  </div>
+                  <small class="nivel-texto">
+                    @switch (estado(p)) {
+                      @case ('bajo') { Reponer ya · mínimo {{ p.stockMinimo }} }
+                      @case ('cerca') { Cerca del mínimo ({{ p.stockMinimo }}) }
+                      @default { Stock suficiente }
+                    }
+                  </small>
+                </td>
+                <td class="num"><span class="precio">{{ moneda() }} {{ p.precio | number: '1.2-2' }}</span></td>
+                <td class="acciones">
+                  <button type="button" class="btn-icono" [attr.aria-label]="'Editar ' + p.nombre" (click)="abrirEditar(p)"><app-icono nombre="lapiz" /></button>
+                  <button type="button" class="btn-icono peligro" [attr.aria-label]="'Eliminar ' + p.nombre" (click)="eliminar(p)"><app-icono nombre="papelera" /></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>
+
+@if (modalAbierto()) {
+  <app-modal [titulo]="editandoId() === null ? 'Nuevo producto' : 'Editar producto'" (cerrar)="cerrarModal()">
+    <form (ngSubmit)="guardar()" novalidate>
+      <div class="campo">
+        <label for="p-nombre">Nombre</label>
+        <input id="p-nombre" name="nombre" type="text" [(ngModel)]="form.nombre" />
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="p-categoria">Categoría</label>
+          <input id="p-categoria" name="categoria" type="text" list="lista-categorias" [(ngModel)]="form.categoria" />
+          <datalist id="lista-categorias">
+            @for (c of categorias(); track c) { <option [value]="c"></option> }
+          </datalist>
+        </div>
+        <div class="campo">
+          <label for="p-unidad">Unidad</label>
+          <select id="p-unidad" name="unidad" [(ngModel)]="form.unidad">
+            <option value="und">Unidad</option>
+            <option value="m">Metro</option>
+            <option value="kg">Kilo</option>
+            <option value="gal">Galón</option>
+            <option value="caja">Caja</option>
+            <option value="bolsa">Bolsa</option>
+          </select>
+        </div>
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="p-stock">Stock actual</label>
+          <input id="p-stock" name="stock" type="number" min="0" [(ngModel)]="form.stock" />
+        </div>
+        <div class="campo">
+          <label for="p-minimo">Stock mínimo</label>
+          <input id="p-minimo" name="stockMinimo" type="number" min="0" [(ngModel)]="form.stockMinimo" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="p-precio">Precio ({{ moneda() }})</label>
+        <input id="p-precio" name="precio" type="number" min="0" step="0.01" [(ngModel)]="form.precio" />
+      </div>
+
+      @if (errorForm()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorForm() }}</p>
+      }
+
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="cerrarModal()">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Guardar</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (modalCategoriaAbierto()) {
+  <app-modal titulo="Nueva categoría" (cerrar)="cerrarModalCategoria()">
+    <form (ngSubmit)="guardarCategoria()" novalidate>
+      <div class="campo">
+        <label for="cat-nombre">Nombre de la categoría</label>
+        <input id="cat-nombre" name="nombre" type="text" [(ngModel)]="formCategoria.nombre" placeholder="Ej. Grifería, Cerrajería, etc." />
+      </div>
+      <div class="campo">
+        <label for="cat-desc">Descripción (opcional)</label>
+        <textarea id="cat-desc" name="descripcion" [(ngModel)]="formCategoria.descripcion" placeholder="Breve detalle de los productos que abarca..."></textarea>
+      </div>
+
+      @if (errorCategoria()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorCategoria() }}</p>
+      }
+
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="cerrarModalCategoria()">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Crear categoría</button>
+      </div>
+    </form>
+  </app-modal>
+}

@@ -1,0 +1,91 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Clientes</h1>
+      <p>Quién te compra y cómo encontrarlo. {{ activos() }} de {{ clientes().length }} activos.</p>
+    </div>
+    <button type="button" class="btn btn-primario" (click)="abrirNuevo()"><app-icono nombre="usuario-mas" /> Nuevo cliente</button>
+  </header>
+
+  <div class="barra-herramientas">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" placeholder="Buscar por nombre, teléfono o correo" aria-label="Buscar cliente"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <span class="resultados">{{ filtrados().length }} {{ filtrados().length === 1 ? 'cliente' : 'clientes' }}</span>
+  </div>
+
+  @if (clientes().length === 0) {
+    <section class="hoja">
+      <app-vacio icono="personas" titulo="Aún no tienes clientes" texto="Guarda sus datos para encontrarlos rápido en cada venta.">
+        <button type="button" class="btn btn-primario" (click)="abrirNuevo()"><app-icono nombre="usuario-mas" /> Agregar cliente</button>
+      </app-vacio>
+    </section>
+  } @else if (filtrados().length === 0) {
+    <section class="hoja"><app-vacio icono="buscar" titulo="Sin resultados" texto="Ningún cliente coincide con tu búsqueda." /></section>
+  } @else {
+    <div class="fichas">
+      @for (c of filtrados(); track c.id; let i = $index) {
+        <article class="ficha" [class.inactiva]="!c.activo" [style.animation-delay.ms]="(i % 12) * 45">
+          <header>
+            <span class="monograma" aria-hidden="true">{{ iniciales(c.nombre) }}</span>
+            <h3>{{ c.nombre }}</h3>
+          </header>
+          <ul class="contacto">
+            <li [class.falta]="!c.telefono"><app-icono nombre="telefono" [tamano]="16" /> {{ c.telefono || 'Sin teléfono' }}</li>
+            <li [class.falta]="!c.email"><app-icono nombre="correo" [tamano]="16" /> {{ c.email || 'Sin correo' }}</li>
+            <li [class.falta]="!c.direccion"><app-icono nombre="ubicacion" [tamano]="16" /> {{ c.direccion || 'Sin dirección' }}</li>
+          </ul>
+          <footer>
+            <label class="estado-fila">
+              <span class="palanca">
+                <input type="checkbox" role="switch" [checked]="c.activo" (change)="cambiarEstado(c)" [attr.aria-label]="'Cliente ' + c.nombre + ' activo'" />
+                <span class="pista"></span>
+              </span>
+              {{ c.activo ? 'Activo' : 'Inactivo' }}
+            </label>
+            <span>
+              <button type="button" class="btn-icono" [attr.aria-label]="'Editar ' + c.nombre" (click)="abrirEditar(c)"><app-icono nombre="lapiz" /></button>
+              <button type="button" class="btn-icono peligro" [attr.aria-label]="'Eliminar ' + c.nombre" (click)="eliminar(c)"><app-icono nombre="papelera" /></button>
+            </span>
+          </footer>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+@if (modalAbierto()) {
+  <app-modal [titulo]="editandoId() === null ? 'Nuevo cliente' : 'Editar cliente'" (cerrar)="modalAbierto.set(false)">
+    <form (ngSubmit)="guardar()" novalidate>
+      <div class="campo">
+        <label for="cl-nombre">Nombre</label>
+        <input id="cl-nombre" name="nombre" type="text" [(ngModel)]="form.nombre" />
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="cl-tel">Teléfono</label>
+          <input id="cl-tel" name="telefono" type="tel" [(ngModel)]="form.telefono" />
+        </div>
+        <div class="campo">
+          <label for="cl-mail">Correo</label>
+          <input id="cl-mail" name="email" type="email" [(ngModel)]="form.email" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="cl-dir">Dirección</label>
+        <input id="cl-dir" name="direccion" type="text" [(ngModel)]="form.direccion" />
+      </div>
+
+      @if (errorForm()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorForm() }}</p>
+      }
+
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="modalAbierto.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Guardar</button>
+      </div>
+    </form>
+  </app-modal>
+}

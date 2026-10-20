@@ -1,0 +1,159 @@
+:host { display: block; }
+
+@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+.acceso {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+  align-items: center;
+  gap: 32px clamp(32px, 7vw, 120px);
+  min-height: 100vh;
+  padding: 40px clamp(20px, 7vw, 120px) 64px;
+  overflow: hidden;
+}
+
+/* Resplandores que se desplazan despacio detrás de todo */
+.acceso::before, .acceso::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.acceso::before { top: -200px; right: -120px; background: var(--halo-1); animation: flota 16s ease-in-out infinite alternate; }
+.acceso::after { bottom: -240px; left: -160px; background: var(--halo-2); animation: flota 20s ease-in-out infinite alternate-reverse; }
+@keyframes flota { to { transform: translate(60px, 40px) scale(1.15); } }
+
+.acceso-marca { position: relative; z-index: 1; max-width: 560px; animation: subir 0.7s var(--suave) both; }
+.sello-marca {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 26px;
+  color: var(--acento-texto);
+  background: var(--acento-suave);
+  border: 1px solid var(--acento);
+  border-radius: 14px;
+  box-shadow: 0 0 40px -8px var(--acento-brillo);
+}
+.acceso-marca h1 {
+  font-size: clamp(44px, 6.4vw, 84px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+  background: linear-gradient(180deg, var(--texto) 40%, var(--acento));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.acceso-marca > p { margin-top: 20px; font-size: 17px; color: var(--texto-suave); max-width: 42ch; }
+.acceso-marca ul { display: grid; gap: 12px; margin: 30px 0 0; padding: 0; list-style: none; font-weight: 500; }
+.acceso-marca li { display: flex; align-items: center; gap: 12px; animation: subir 0.6s var(--suave) both; }
+.acceso-marca li:nth-child(1) { animation-delay: 0.25s; }
+.acceso-marca li:nth-child(2) { animation-delay: 0.35s; }
+.acceso-marca li:nth-child(3) { animation-delay: 0.45s; }
+.acceso-marca li app-icono {
+  padding: 7px;
+  box-sizing: content-box;
+  color: var(--acento-texto);
+  background: var(--acento-suave);
+  border: 1px solid color-mix(in srgb, var(--acento) 35%, transparent);
+  border-radius: 8px;
+}
+.estado-sistema { display: inline-flex; align-items: center; gap: 10px; margin-top: 34px; font: 500 12.5px var(--fuente-mono); color: var(--texto-suave); }
+.estado-sistema i { width: 8px; height: 8px; background: var(--ok); border-radius: 50%; box-shadow: 0 0 10px var(--ok); animation: pulso 2.4s ease-in-out infinite; }
+
+/* Tarjeta con un destello que le da la vuelta al borde */
+.acceso-tag { position: relative; z-index: 1; display: flex; justify-content: center; }
+.tarjeta-acceso {
+  position: relative;
+  width: 100%;
+  padding: 34px 34px 28px;
+  background: color-mix(in srgb, var(--panel-2) 86%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.9), 0 0 80px -40px var(--acento-brillo);
+  animation: entra-tarjeta 0.8s var(--suave) 0.1s both;
+}
+.tarjeta-acceso::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: 14px;
+  background: conic-gradient(from var(--ang), transparent 0 72%, var(--acento) 88%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: vuelta 7s linear infinite;
+  pointer-events: none;
+}
+@keyframes vuelta { to { --ang: 360deg; } }
+@keyframes entra-tarjeta { from { opacity: 0; transform: translateY(28px) scale(0.98); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.tarjeta-acceso.sacudir { animation: sacudir 0.4s ease both; }
+
+.tarjeta-acceso h2 { font-size: 28px; letter-spacing: -0.03em; margin-bottom: 6px; }
+.tarjeta-acceso .subtitulo { color: var(--texto-suave); margin-bottom: 26px; }
+.tarjeta-acceso .enlace { margin-top: 20px; text-align: center; color: var(--texto-suave); font-size: 14px; }
+.tarjeta-acceso .enlace button {
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--acento-texto);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.tarjeta-acceso .enlace button:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Cuenta creada: el formulario se cubre con la confirmación */
+.exito {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  background: var(--panel-2);
+  border-radius: 14px;
+  animation: velo-entra 0.35s ease both;
+}
+.exito .marca-ok {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 10px;
+  color: var(--ok);
+  background: var(--ok-suave);
+  border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent);
+  border-radius: 50%;
+  box-shadow: 0 0 50px -6px var(--ok);
+  animation: ventana-entra 0.5s var(--resorte) both;
+}
+.exito h3 { font-size: 24px; }
+.exito p { color: var(--texto-suave); }
+.exito .carga { width: 180px; height: 3px; margin-top: 18px; overflow: hidden; background: var(--borde); border-radius: 3px; }
+.exito .carga i { display: block; height: 100%; background: var(--ok); box-shadow: 0 0 10px var(--ok); transform-origin: left; animation: llenar 1.8s linear both; }
+
+.acceso app-regla { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; }
+
+@media (max-width: 900px) {
+  .acceso { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-top: 32px; align-content: start; }
+  .acceso-marca ul, .estado-sistema { display: none; }
+  .acceso-marca > p { margin-top: 12px; font-size: 15px; }
+  .sello-marca { width: 46px; height: 46px; margin-bottom: 18px; }
+  .acceso-marca h1 { font-size: 46px; }
+  .tarjeta-acceso { padding: 26px 22px 22px; }
+}
+.tarjeta-envoltura { width: 100%; }

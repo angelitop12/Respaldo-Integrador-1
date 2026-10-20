@@ -1,0 +1,6 @@
+:host { display: block; }
+.chip-bajo app-icono { color: var(--alerta); }
+.chip-bajo.activo { color: var(--alerta); background: var(--alerta-suave); border-color: var(--alerta); box-shadow: 0 0 16px -6px var(--alerta); }
+.nivel-col { min-width: 190px; }
+.nivel-texto { margin-top: 6px; }
+@media (max-width: 760px) { .nivel-col { display: none; } }

@@ -1,0 +1,111 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Configuración</h1>
+      <p>Los datos de tu ferretería y de tu cuenta.</p>
+    </div>
+  </header>
+
+  <div class="secciones">
+    <form class="hoja seccion" (ngSubmit)="guardarEmpresa()" novalidate>
+      <h2><app-icono nombre="tienda" /> La empresa</h2>
+      <div class="campo">
+        <label for="e-nombre">Nombre comercial</label>
+        <input id="e-nombre" name="nombre" type="text" [(ngModel)]="empresa.nombre" />
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="e-ruc">RUC</label>
+          <input id="e-ruc" name="ruc" type="text" inputmode="numeric" maxlength="11" [(ngModel)]="empresa.ruc" />
+        </div>
+        <div class="campo">
+          <label for="e-tel">Teléfono</label>
+          <input id="e-tel" name="telefono" type="tel" [(ngModel)]="empresa.telefono" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="e-dir">Dirección</label>
+        <input id="e-dir" name="direccion" type="text" [(ngModel)]="empresa.direccion" />
+      </div>
+      <div class="campo">
+        <label for="e-moneda">Moneda</label>
+        <select id="e-moneda" name="moneda" [(ngModel)]="empresa.moneda">
+          @for (m of monedas; track m.valor) { <option [value]="m.valor">{{ m.texto }}</option> }
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primario">Guardar empresa</button>
+    </form>
+
+    <form class="hoja seccion" (ngSubmit)="guardarPerfil()" novalidate>
+      <h2><app-icono nombre="usuario" /> Tu perfil</h2>
+      <div class="campo">
+        <label for="u-nombre">Nombre</label>
+        <input id="u-nombre" name="nombre" type="text" autocomplete="name" [(ngModel)]="perfil.nombre" />
+      </div>
+      <div class="campo">
+        <label for="u-correo">Correo</label>
+        <input id="u-correo" name="correo" type="email" autocomplete="email" [(ngModel)]="perfil.correo" />
+      </div>
+      <button type="submit" class="btn btn-primario">Guardar perfil</button>
+    </form>
+
+    <section class="hoja seccion">
+      <h2><app-icono nombre="ajustes" /> Preferencias</h2>
+      <label class="preferencia">
+        <span>
+          <strong>Avisarme del stock bajo</strong>
+          <small>Muestra en el dashboard lo que está por agotarse.</small>
+        </span>
+        <span class="palanca">
+          <input type="checkbox" role="switch" [checked]="avisarStock()" (change)="avisarStock.set(!avisarStock())" />
+          <span class="pista"></span>
+        </span>
+      </label>
+      <label class="preferencia">
+        <span>
+          <strong>Tema claro</strong>
+          <small>Cambia entre el tema oscuro y el claro.</small>
+        </span>
+        <span class="palanca">
+          <input type="checkbox" role="switch" [checked]="tema.claro()" (change)="tema.alternar()" />
+          <span class="pista"></span>
+        </span>
+      </label>
+      <label class="preferencia">
+        <span>
+          <strong>Reducir animaciones</strong>
+          <small>Menos movimiento en pantalla, por comodidad.</small>
+        </span>
+        <span class="palanca">
+          <input type="checkbox" role="switch" [checked]="reducirMovimiento()" (change)="alternarMovimiento()" />
+          <span class="pista"></span>
+        </span>
+      </label>
+    </section>
+
+    <form class="hoja seccion" (ngSubmit)="cambiarClave()" novalidate>
+      <h2><app-icono nombre="candado" /> Seguridad</h2>
+      <div class="campo campo-clave">
+        <label for="k-actual">Contraseña actual</label>
+        <input id="k-actual" name="actual" autocomplete="current-password" [type]="verClave() ? 'text' : 'password'" [(ngModel)]="clave.actual" />
+        <button type="button" class="btn-icono" [attr.aria-label]="verClave() ? 'Ocultar contraseñas' : 'Mostrar contraseñas'" (click)="verClave.set(!verClave())">
+          <app-icono [nombre]="verClave() ? 'ojo-tachado' : 'ojo'" />
+        </button>
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="k-nueva">Nueva contraseña</label>
+          <input id="k-nueva" name="nueva" autocomplete="new-password" [type]="verClave() ? 'text' : 'password'" [(ngModel)]="clave.nueva" />
+        </div>
+        <div class="campo">
+          <label for="k-repetir">Repetir nueva</label>
+          <input id="k-repetir" name="repetir" autocomplete="new-password" [type]="verClave() ? 'text' : 'password'" [(ngModel)]="clave.repetir" />
+        </div>
+      </div>
+      @if (errorClave()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorClave() }}</p>
+      }
+      <button type="submit" class="btn">Cambiar contraseña</button>
+    </form>
+  </div>
+</div>

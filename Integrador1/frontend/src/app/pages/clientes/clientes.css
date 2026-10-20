@@ -1,0 +1,24 @@
+:host { display: block; }
+.fichas { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; }
+.ficha {
+  display: flex; flex-direction: column; gap: 14px; padding: 18px 18px 12px;
+  animation: subir 0.55s var(--suave) both;
+  transition: transform 0.25s var(--suave), border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.ficha:hover { transform: translateY(-3px); border-color: var(--acento); box-shadow: var(--sombra), 0 0 34px -14px var(--acento-brillo); }
+.ficha.inactiva header, .ficha.inactiva .contacto { opacity: 0.5; }
+.ficha header { display: flex; align-items: center; gap: 12px; }
+.ficha h3 { font-size: 18px; line-height: 1.15; overflow-wrap: anywhere; }
+.monograma {
+  display: grid; place-items: center; flex: none; width: 44px; height: 44px;
+  font: 600 16px/1 var(--fuente-titulo); color: var(--acento-texto); background: var(--acento-suave);
+  border: 1px solid color-mix(in srgb, var(--acento) 45%, transparent); border-radius: 12px;
+}
+.ficha.inactiva .monograma { color: var(--texto-suave); background: transparent; border-color: var(--borde-fuerte); }
+.contacto { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.contacto li { display: flex; align-items: flex-start; gap: 10px; overflow-wrap: anywhere; font-size: 14px; }
+.contacto app-icono { flex: none; margin-top: 2px; color: var(--acento-texto); }
+.contacto .falta { color: var(--texto-suave); font-style: italic; }
+.contacto .falta app-icono { color: var(--texto-suave); }
+.ficha footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--borde); }
+.estado-fila { display: flex; align-items: center; gap: 10px; margin: 0; font-weight: 500; color: var(--texto); cursor: pointer; }
