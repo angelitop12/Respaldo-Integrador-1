@@ -1,0 +1,44 @@
+:host { display: block; }
+
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.dato { padding: 16px 18px; background: var(--superficie, var(--campo)); border: 1px solid var(--borde); border-radius: var(--radio); display: grid; gap: 4px; }
+.dato-titulo { font-size: 12.5px; font-weight: 600; color: var(--texto-suave); }
+.dato strong { font: 600 26px/1.15 var(--fuente-titulo); font-variant-numeric: tabular-nums; }
+.dato strong small { font: 500 13px var(--fuente-mono); color: var(--texto-suave); }
+.dato small { color: var(--texto-suave); font-size: 12px; }
+.dato-ok strong { color: var(--ok); }
+.dato-alerta strong { color: var(--alerta); }
+.tenue { color: var(--texto-suave); }
+
+.filtros-kardex { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 14px; margin-bottom: 4px; }
+.sin-margen { margin-bottom: 0; }
+
+.tabla-kardex .fecha { white-space: nowrap; font: 500 13px var(--fuente-mono); color: var(--texto-suave); }
+.tabla-kardex .entrada { color: var(--ok); font-weight: 600; }
+.tabla-kardex .salida { color: var(--alerta); font-weight: 600; }
+.tabla-kardex td small { display: inline; margin-left: 3px; font: 500 11px var(--fuente-mono); }
+.tabla-kardex td.num small { display: block; margin: 2px 0 0; }
+.tabla-kardex td strong + small { display: block; margin-left: 0; }
+
+.aviso-limite { padding: 14px 20px; border-top: 1px solid var(--borde); color: var(--texto-suave); font-size: 13px; }
+
+.nota-fifo { margin: 0 0 18px; padding: 10px 14px; background: var(--acento-suave); border-radius: var(--radio-chico); color: var(--texto-suave); font-size: 13px; line-height: 1.45; }
+.nota-fifo strong { color: var(--texto); }
+.tabla-kardex td.num { white-space: nowrap; }
+
+.enlace-producto { display: block; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.enlace-producto strong { border-bottom: 1px dashed var(--borde-fuerte); transition: color 0.15s ease, border-color 0.15s ease; }
+.enlace-producto:hover strong, .enlace-producto:focus-visible strong { color: var(--acento-texto); border-bottom-color: var(--acento); }
+.enlace-producto:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; border-radius: 4px; }
+
+.producto-elegido { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; background: var(--acento-suave); border: 1px solid var(--acento); border-radius: var(--radio); }
+.acciones-producto { display: flex; gap: 8px; flex-wrap: wrap; }
+.pista-clic { margin: 0 0 10px; color: var(--texto-suave); font-size: 13px; }
+
+/* Tabla compacta: que las 11 columnas quepan en pantalla sin cortarse */
+.tabla-kardex { font-size: 13px; }
+.tabla-kardex th, .tabla-kardex td { padding: 10px 8px; }
+.tabla-kardex th { font-size: 12px; }
+.tabla-kardex .fecha { white-space: normal; width: 86px; font-size: 12px; }
+.tabla-kardex td.num { font-size: 13px; }
+.tabla-kardex .insignia { font-size: 11px; padding: 3px 7px; white-space: normal; }

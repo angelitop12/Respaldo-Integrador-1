@@ -1,0 +1,42 @@
+:host { display: block; }
+
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.dato { padding: 16px 18px; background: var(--campo); border: 1px solid var(--borde); border-radius: var(--radio); display: grid; gap: 4px; }
+.dato-titulo { font-size: 12.5px; font-weight: 600; color: var(--texto-suave); }
+.dato strong { font: 600 26px/1.15 var(--fuente-titulo); font-variant-numeric: tabular-nums; }
+.dato-ok strong { color: var(--ok); }
+.dato-alerta strong { color: var(--alerta); }
+
+.select-barra { width: auto; min-width: 210px; }
+.chip-bajo app-icono { color: var(--alerta); }
+.chip-bajo.activo { color: var(--alerta); background: var(--alerta-suave); border-color: var(--alerta); }
+.chip app-icono { margin-right: 6px; }
+
+.zona { margin-bottom: 30px; }
+.zona-titulo { display: flex; align-items: center; gap: 10px; font-size: 20px; margin-bottom: 14px; }
+.pasillo { margin-bottom: 18px; }
+.pasillo-titulo { font: 600 12.5px var(--fuente-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--texto-suave); margin-bottom: 10px; }
+.estantes { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; align-items: start; }
+
+.estante { min-width: 0; padding: 14px 16px; background: var(--campo); border: 1px solid var(--borde); border-radius: var(--radio); display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; transition: border-color 0.15s ease; }
+.estante:hover { border-color: var(--borde-fuerte); }
+.estante.libre { border-style: dashed; }
+.estante.inactiva { opacity: 0.6; }
+.estante-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-width: 0; }
+.estante-cab small { display: block; color: var(--texto-suave); font-size: 12px; margin-top: 2px; }
+.codigo { font: 600 15px var(--fuente-mono); color: var(--acento-texto); }
+.acciones-estante { display: flex; gap: 2px; margin: -4px -6px 0 0; }
+.estante-desc { color: var(--texto-suave); font-size: 13px; }
+.estante-vacio { color: var(--texto-suave); font-size: 13px; font-style: italic; }
+.estante-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.estante-lista li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 7px 8px 7px 10px; background: var(--acento-suave); border-radius: var(--radio-chico); font-size: 13px; line-height: 1.35; }
+.prod-nombre { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.prod-stock { flex: none; padding-top: 1px; font: 500 12px var(--fuente-mono); color: var(--texto-suave); white-space: nowrap; }
+.estante-lista .btn-icono { flex: none; margin: -3px -4px -3px 0; }
+
+.sin-ubicar { margin-top: 8px; }
+.select-tabla { width: auto; min-width: 260px; max-width: 100%; }
+
+.principal { margin-left: 8px; }
+.campos-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 14px; }
+.estado-fila { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 6px; font-weight: 500; color: var(--texto); cursor: pointer; }

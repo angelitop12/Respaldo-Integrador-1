@@ -1,0 +1,89 @@
+<div class="acceso">
+  <section class="acceso-marca">
+    <span class="sello-marca"><app-icono nombre="llave" [tamano]="28" /></span>
+    <h1>Recupera tu acceso</h1>
+    <p>Te damos un código de 6 dígitos para que elijas una contraseña nueva.</p>
+  </section>
+
+  <section class="acceso-tag">
+    <div class="tarjeta-envoltura">
+      <form class="tarjeta-acceso" [class.sacudir]="sacudiendo()" (animationend)="finAnimacion($event)"
+            (ngSubmit)="paso() === 1 ? pedirCodigo() : cambiarClave()" novalidate>
+        <h2>¿Olvidaste tu contraseña?</h2>
+
+        @if (paso() === 1) {
+          <p class="subtitulo">Escribe tu usuario o tu correo y te damos un código.</p>
+
+          <div class="campo">
+            <label for="identificador">Usuario o correo</label>
+            <input id="identificador" name="identificador" type="text" autocomplete="username" [(ngModel)]="identificador" />
+          </div>
+
+          @if (error()) {
+            <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ error() }}</p>
+          }
+
+          <button type="submit" class="btn btn-primario btn-ancho" [disabled]="cargando()">
+            {{ cargando() ? 'Generando código...' : 'Enviar código' }}
+          </button>
+        } @else {
+          <p class="subtitulo">Escribe el código y elige tu contraseña nueva.</p>
+
+          <p class="mensaje-ok" role="status">
+            <app-icono nombre="check-circulo" [tamano]="18" />
+            <span>{{ aviso() }}@if (!porCorreo()) { En esta versión de prueba el código aparece en la terminal donde corre el backend. } @else { Revisa tu bandeja de entrada y la carpeta de spam. }</span>
+          </p>
+
+          <div class="campo">
+            <label for="codigo">Código de 6 dígitos</label>
+            <input id="codigo" name="codigo" class="entrada-codigo" type="text" inputmode="numeric" maxlength="6"
+                   autocomplete="one-time-code" placeholder="000000" [(ngModel)]="codigo" />
+          </div>
+
+          <div class="campo campo-clave">
+            <label for="nueva">Contraseña nueva</label>
+            <input id="nueva" name="nueva" autocomplete="new-password"
+                   [type]="verNueva() ? 'text' : 'password'" [(ngModel)]="nueva" />
+            <button type="button" class="btn-icono" [attr.aria-label]="verNueva() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    (click)="verNueva.set(!verNueva())">
+              <app-icono [nombre]="verNueva() ? 'ojo-tachado' : 'ojo'" />
+            </button>
+          </div>
+
+          <div class="campo campo-clave">
+            <label for="confirmar">Confirmar contraseña</label>
+            <input id="confirmar" name="confirmar" autocomplete="new-password"
+                   [type]="verConfirmar() ? 'text' : 'password'" [(ngModel)]="confirmar" />
+            <button type="button" class="btn-icono" [attr.aria-label]="verConfirmar() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    (click)="verConfirmar.set(!verConfirmar())">
+              <app-icono [nombre]="verConfirmar() ? 'ojo-tachado' : 'ojo'" />
+            </button>
+          </div>
+
+          @if (error()) {
+            <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ error() }}</p>
+          }
+
+          <button type="submit" class="btn btn-primario btn-ancho" [disabled]="cargando() || exito()">
+            {{ cargando() ? 'Guardando...' : 'Cambiar contraseña' }}
+          </button>
+
+          <p class="enlace">¿No te llegó el código o venció? <button type="button" (click)="otroCodigo()">Pedir otro código</button></p>
+        }
+
+        <p class="enlace">¿Ya la recordaste? <button type="button" (click)="irALogin()">Volver al login</button></p>
+
+        @if (exito()) {
+          <div class="exito dibujar" role="status">
+            <span class="marca-ok"><app-icono nombre="check-circulo" [tamano]="44" /></span>
+            <h3>Contraseña actualizada</h3>
+            <p>Te llevamos al login…</p>
+            <span class="carga"><i></i></span>
+          </div>
+        }
+      </form>
+    </div>
+  </section>
+
+  <app-regla />
+</div>

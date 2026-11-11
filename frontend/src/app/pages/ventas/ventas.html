@@ -1,0 +1,254 @@
+<header class="encabezado">
+  <div>
+    <h1>Ventas</h1>
+    <p>El registro de todo lo que sale por el mostrador.</p>
+  </div>
+  @if (sesion.puede('VENDEDOR')) {
+    <button type="button" class="btn btn-primary" (click)="abrir()"><app-icono nombre="mas" /> Nueva venta</button>
+  }
+</header>
+
+<div class="resumen">
+  <div class="acumulado">
+    <span>{{ metodo() === 'Todos' ? 'Total acumulado' : 'Total en ' + metodo() }}:</span>
+    <strong><small>S/ </small><app-contador [valor]="totalAcumulado()" [decimales]="2" [duracion]="700" /></strong>
+  </div>
+  <div class="resumen-der">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" placeholder="Buscar cliente o código" aria-label="Buscar venta" 
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <p class="resultados-venta">{{ filtradas().length }} {{ filtradas().length === 1 ? 'venta' : 'ventas' }}</p>
+  </div>
+</div>
+
+<div class="filtros" role="group" aria-label="Filtrar por método de pago">
+  <button type="button" class="chip" [class.activo]="metodo() === 'Todos'" (click)="metodo.set('Todos')">Todos</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Efectivo'" (click)="metodo.set('Efectivo')">Efectivo</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Tarjeta'" (click)="metodo.set('Tarjeta')">Tarjeta</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Yape/Plin'" (click)="metodo.set('Yape/Plin')">Yape/Plin</button>
+  <button type="button" class="chip" [class.activo]="metodo() === 'Transferencia'" (click)="metodo.set('Transferencia')">Transferencia</button>
+</div>
+
+<section class="hoja">
+  @if (ordenadas().length === 0) {
+    <app-vacio icono="carrito" titulo="Aún no hay ventas" texto="Registra la primera venta del día y aparecerá aquí.">
+      @if (sesion.puede('VENDEDOR')) {
+        <button type="button" class="btn btn-primary" (click)="abrir()"><app-icono nombre="mas" /> Registrar venta</button>
+      }
+    </app-vacio>
+  } @else if (filtradas().length === 0) {
+    <app-vacio icono="buscar" titulo="Sin resultados" texto="No hay ventas con ese filtro." />
+  } @else {
+    <div class="tabla-envoltorio">
+      <table class="tabla">
+        <thead>
+          <tr><th>Código</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Pago</th><th class="num">Total</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (v of filtradas(); track v.id) {
+            <tr
+              class="fila-venta"
+              [class.fila-abierta]="filaExpandidaId() === v.id"
+              [style.opacity]="v.estado === 'ANULADA' ? '0.6' : '1'"
+              (click)="alternarFila(v.id)"
+            >
+              <td>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <strong class="codigo">{{ v.id }}</strong>
+                  @if (v.estado === 'ANULADA') {
+                    <span class="insignia insignia-aviso" style="font-size: 11px; color: #f87171; border-color: rgba(239,68,68,0.3);">Anulada</span>
+                  }
+                </div>
+              </td>
+              <td>{{ v.fecha }} <small>{{ v.hora }}</small></td>
+              <td>{{ v.cliente }}</td>
+              <td>{{ v.vendedor }}</td>
+              <td><span class="insignia">{{ v.metodoPago }}</span></td>
+              <td class="num">
+                <strong [style.text-decoration]="v.estado === 'ANULADA' ? 'line-through' : 'none'">
+                  <small>S/ </small>{{ v.total | number: '1.2-2' }}
+                </strong>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; align-items: center; gap: 6px;">
+                  @if (v.estado !== 'ANULADA' && sesion.puede()) {
+                    <button type="button" class="btn-icono peligro" title="Anular venta" (click)="$event.stopPropagation(); eliminar(v.id)">
+                      <app-icono nombre="papelera" />
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="btn-icono"
+                    [title]="filaExpandidaId() === v.id ? 'Cerrar detalle' : 'Ver detalle de la venta'"
+                    (click)="$event.stopPropagation(); alternarFila(v.id)"
+                  >
+                    <app-icono
+                      nombre="chevron-abajo"
+                      [style.transform]="filaExpandidaId() === v.id ? 'rotate(180deg)' : 'rotate(0deg)'"
+                      style="transition: transform 0.2s ease; display: inline-block;"
+                    />
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            @if (filaExpandidaId() === v.id) {
+              <tr class="fila-detalle-abierta">
+                <td colspan="7">
+                  <div class="panel-detalle-venta" (click)="$event.stopPropagation()">
+                    <div class="cabecera-detalle-venta">
+                      <div class="info-principal-venta">
+                        <span class="etiqueta-comprobante"><app-icono nombre="recibo" [tamano]="16" /> Detalle de Venta {{ v.id }}</span>
+                        <span class="separador-punto">·</span>
+                        <span class="fecha-comprobante">{{ v.fecha }} a las {{ v.hora }}</span>
+                        @if (v.estado === 'ANULADA') {
+                          <span class="badge-anulado-pill">Venta Anulada</span>
+                        } @else {
+                          <span class="badge-emitido-pill">Completada</span>
+                        }
+                      </div>
+                      <button type="button" class="btn-cerrar-detalle" (click)="alternarFila(v.id)">
+                        <app-icono nombre="cerrar" [tamano]="14" /> Cerrar detalle
+                      </button>
+                    </div>
+
+                    <div class="tarjetas-resumen-venta">
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Cliente</span>
+                        <strong>{{ v.cliente || 'Cliente General' }}</strong>
+                      </div>
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Vendedor</span>
+                        <strong>{{ v.vendedor || 'Mostrador' }}</strong>
+                      </div>
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Forma de Pago</span>
+                        <span class="insignia-pago-tag">{{ v.metodoPago }}</span>
+                      </div>
+                      <div class="mini-tarjeta-venta">
+                        <span class="mini-label">Total Liquidado</span>
+                        <strong class="total-destacado">S/ {{ v.total | number: '1.2-2' }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="seccion-articulos-venta">
+                      <h4><app-icono nombre="caja" [tamano]="16" /> Desglose de Productos Vendidos</h4>
+                      @if (v.items && v.items.length > 0) {
+                        <div class="tabla-envoltorio-articulos">
+                          <table class="tabla-articulos">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Producto</th>
+                                <th class="num">Cantidad</th>
+                                <th class="num">Precio Unit.</th>
+                                <th class="num">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (item of v.items; track item.id || $index; let idx = $index) {
+                                <tr>
+                                  <td class="col-num">{{ idx + 1 }}</td>
+                                  <td><strong>{{ item.producto }}</strong></td>
+                                  <td class="num">{{ item.cantidad | number: '1.0-2' }}</td>
+                                  <td class="num">S/ {{ item.precio | number: '1.2-2' }}</td>
+                                  <td class="num"><strong style="color: var(--acento-texto);">S/ {{ item.subtotal | number: '1.2-2' }}</strong></td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      } @else {
+                        <p class="sin-items-detalle">Esta venta se registró como comprobante general por un total de <b>S/ {{ v.total | number: '1.2-2' }}</b>.</p>
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<!-- PUNTO DE VENTA: cliente, vendedor, método de pago y carrito -->
+@if (modalAbierto()) {
+  <app-modal titulo="Punto de Venta (POS)" (cerrar)="modalAbierto.set(false)">
+
+    <div class="campos-3">
+      <div class="campo">
+        <label for="v-cliente">Cliente</label>
+        <input id="v-cliente" type="text" [(ngModel)]="form.cliente" placeholder="Nombre del cliente" />
+      </div>
+      <div class="campo">
+        <label for="v-vendedor">Vendedor</label>
+        <input id="v-vendedor" type="text" [(ngModel)]="form.vendedor" placeholder="Quién atendió" readonly title="Se registra con el usuario que inició sesión" />
+      </div>
+      <div class="campo">
+        <label for="v-pago">Método de pago</label>
+        <select id="v-pago" [(ngModel)]="form.metodoPago">
+          <option>Efectivo</option>
+          <option>Tarjeta</option>
+          <option>Yape/Plin</option>
+          <option>Transferencia</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="pos-agregar">
+      <div class="campo">
+        <label for="v-producto">Agregar productos al carrito</label>
+        <select id="v-producto" [(ngModel)]="formProducto.id">
+          <option value="">-- Seleccionar producto del catálogo --</option>
+          @for (p of productos(); track p.id) {
+            <option [value]="p.id">{{ p.nombre }} (Quedan: {{ p.stock | number: '1.0-2' }}) - S/ {{ p.precio | number: '1.2-2' }}</option>
+          }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="v-cantidad">Cantidad</label>
+        <input id="v-cantidad" type="number" min="1" [(ngModel)]="formProducto.cantidad" (keydown.enter)="agregarAlCarritoMunoz()" />
+      </div>
+      <div class="campo">
+        <button type="button" class="btn" (click)="agregarAlCarritoMunoz()"><app-icono nombre="mas" /> Agregar</button>
+      </div>
+    </div>
+
+    <div class="tabla-envoltorio pos-carrito">
+      <table class="tabla">
+        <thead>
+          <tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th></th></tr>
+        </thead>
+        <tbody>
+          @if (carrito().length === 0) {
+            <tr><td colspan="5" class="pos-vacio">El carrito está vacío</td></tr>
+          }
+          @for (item of carrito(); track item.producto_id) {
+            <tr>
+              <td>{{ item.nombre }}</td>
+              <td class="num">{{ item.cantidad }}</td>
+              <td class="num">S/ {{ item.precio | number: '1.2-2' }}</td>
+              <td class="num"><strong>S/ {{ (item.cantidad * item.precio) | number: '1.2-2' }}</strong></td>
+              <td class="acciones">
+                <button type="button" class="btn-icono peligro" title="Quitar del carrito" (click)="eliminarDelCarrito(item.producto_id)">
+                  <app-icono nombre="cerrar" [tamano]="16" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <p class="pos-total">Total a cobrar: <strong>S/ {{ totalCarrito() | number: '1.2-2' }}</strong></p>
+
+    <div class="modal-acciones">
+      <button type="button" class="btn" (click)="modalAbierto.set(false)">Cancelar</button>
+      <button type="button" class="btn btn-primario" (click)="registrarVentaMunoz()"><app-icono nombre="check" /> Procesar venta</button>
+    </div>
+  </app-modal>
+}

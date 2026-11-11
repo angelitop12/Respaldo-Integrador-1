@@ -1,0 +1,120 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Lotes (FIFO)</h1>
+      <p>De qué compras está hecho tu stock. Cada venta descuenta primero el lote más antiguo, y de ahí sale el costo.</p>
+    </div>
+  </header>
+
+  <section class="como" aria-label="Cómo funciona el método FIFO">
+    <h2>¿Cómo funciona FIFO (PEPS)?</h2>
+    <ol>
+      <li><strong>Entra mercadería</strong> (compra, stock inicial o ajuste): se crea un <em>lote</em> con su cantidad y su costo.</li>
+      <li><strong>Se vende</strong>: el sistema saca primero del lote más antiguo; si no alcanza, sigue con el siguiente.</li>
+      <li><strong>El costo de la venta</strong> es lo que costaron esos lotes, y queda escrito en el Kardex.</li>
+      <li><strong>Si se anula una venta</strong>, las unidades vuelven a los mismos lotes de donde salieron.</li>
+    </ol>
+    <p class="ejemplo">Ejemplo: compras 10 a S/ 2 y luego 10 a S/ 3. Vendes 15 → salen 10 × 2 + 5 × 3 = <strong>S/ 35</strong> de costo, y quedan 5 a S/ 3 = S/ 15.</p>
+  </section>
+
+  <section class="resumen" aria-label="Resumen del inventario valorizado">
+    <div class="dato">
+      <span class="dato-titulo">Valor del inventario (FIFO)</span>
+      <strong>{{ moneda }} {{ valorTotal() | number: '1.2-2' }}</strong>
+    </div>
+    <div class="dato">
+      <span class="dato-titulo">Productos con stock</span>
+      <strong>{{ productosConStock() }}</strong>
+    </div>
+    <div class="dato">
+      <span class="dato-titulo">Lotes vigentes</span>
+      <strong>{{ lotesVigentes() }}</strong>
+    </div>
+  </section>
+
+  <div class="barra-herramientas">
+    <div class="campo barra-campo">
+      <label for="l-producto" class="solo-lector">Producto</label>
+      <select id="l-producto" name="producto" [(ngModel)]="filtroProducto" (ngModelChange)="cargar()">
+        <option value="">Todos los productos</option>
+        @for (p of productos(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+      </select>
+    </div>
+    <div class="filtros sin-margen" role="group" aria-label="Qué lotes mostrar">
+      <button type="button" class="chip" [class.activo]="!verAgotados" (click)="verAgotados = false; cargar()">Solo con stock</button>
+      <button type="button" class="chip" [class.activo]="verAgotados" (click)="verAgotados = true; cargar()">Solo agotados</button>
+    </div>
+    @if (hayFiltros()) {
+      <button type="button" class="btn" (click)="limpiar()"><app-icono nombre="cerrar" [tamano]="16" /> Limpiar</button>
+    }
+  </div>
+
+  @if (cargando() && lotes().length === 0) {
+    <section class="hoja">
+      <app-vacio icono="reloj" titulo="Cargando lotes…" texto="Un momento, estamos leyendo el inventario." />
+    </section>
+  } @else if (fallo() && lotes().length === 0) {
+    <section class="hoja">
+      <app-vacio icono="alerta" titulo="No se pudo cargar" texto="Revisa que el backend esté encendido e inténtalo otra vez.">
+        <button type="button" class="btn btn-primario" (click)="cargar()">Reintentar</button>
+      </app-vacio>
+    </section>
+  } @else if (grupos().length === 0) {
+    <section class="hoja">
+      <app-vacio icono="caja" titulo="Sin lotes" texto="No hay lotes con esos filtros. Los lotes aparecen cuando entra mercadería (compras, stock inicial o ajustes)." />
+    </section>
+  } @else {
+    @for (g of grupos(); track g.productoId) {
+      <section class="hoja grupo">
+        <div class="grupo-cab">
+          <div>
+            <h2>{{ g.producto }}</h2>
+            @if (g.codigoInterno) { <small>{{ g.codigoInterno }}</small> }
+          </div>
+          <dl class="grupo-datos">
+            <div><dt>Stock</dt><dd>{{ g.stock | number: '1.0-2' }} {{ g.unidad }}</dd></div>
+            <div><dt>Costo promedio</dt><dd>{{ moneda }} {{ costoPromedio(g) | number: '1.2-2' }}</dd></div>
+            <div><dt>Valor</dt><dd>{{ moneda }} {{ g.valor | number: '1.2-2' }}</dd></div>
+          </dl>
+        </div>
+        <div class="tabla-envoltorio">
+          <table class="tabla tabla-lotes">
+            <thead>
+              <tr>
+                <th>Orden de salida</th>
+                <th>Lote</th>
+                <th>Origen</th>
+                <th>Ingreso</th>
+                <th class="num">Cantidad inicial</th>
+                <th class="num">Queda</th>
+                <th class="num">Costo unit.</th>
+                <th class="num">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of g.lotes; track l.id) {
+                <tr [class.sale-primero]="l.ordenSalida === 1" [class.agotado]="l.cantidadRestante <= 0">
+                  <td>
+                    @if (l.ordenSalida === 1) { <span class="insignia insignia-ok">1.º en salir</span> }
+                    @else if (l.ordenSalida) { <span class="insignia">{{ l.ordenSalida }}.º</span> }
+                    @else { <span class="insignia insignia-aviso">Agotado</span> }
+                  </td>
+                  <td class="fecha">N.º {{ l.id }}</td>
+                  <td>{{ textoOrigen(l.origen) }}@if (l.referencia) { <small> · {{ l.referencia }}</small> }</td>
+                  <td class="fecha">{{ l.fechaTxt }}</td>
+                  <td class="num">{{ l.cantidadInicial | number: '1.0-2' }}</td>
+                  <td class="num">
+                    <strong>{{ l.cantidadRestante | number: '1.0-2' }}</strong>
+                    <span class="barra" aria-hidden="true"><span [style.width.%]="porcentaje(l)"></span></span>
+                  </td>
+                  <td class="num">{{ moneda }} {{ l.costoUnitario | number: '1.2-2' }}</td>
+                  <td class="num"><strong>{{ moneda }} {{ l.valor | number: '1.2-2' }}</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  }
+</div>

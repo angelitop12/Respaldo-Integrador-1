@@ -1,0 +1,387 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <div class="migas">
+        <span class="miga-icono"><app-icono nombre="calendario" [tamano]="16" /></span>
+        <span>Balance Contable & Métricas</span>
+      </div>
+      <h1>Historial Mensual</h1>
+      <p>Explora el rendimiento de tu ferretería en los últimos 12 meses calendario.</p>
+    </div>
+    <div class="indicador-periodo">
+      <span class="punto-vivo"></span>
+      <span>12 Meses en Tiempo Real</span>
+    </div>
+  </header>
+
+  <!-- SELECTOR DE LOS ÚLTIMOS 12 MESES -->
+  <section class="seccion-selector">
+    <div class="cinta-cabecera">
+      <h2><app-icono nombre="reloj" [tamano]="18" /> Selecciona un Mes</h2>
+      <span class="cinta-sub">Haz clic en cualquier tarjeta para ver su desglose completo</span>
+    </div>
+
+    <div class="cinta-meses" role="tablist" aria-label="Últimos 12 meses">
+      @for (m of ultimos12Meses(); track m.clave) {
+        <button
+          type="button"
+          class="tarjeta-mes"
+          [class.activo]="mesSeleccionadoClave() === m.clave"
+          [class.es-actual]="m.esActual"
+          (click)="seleccionarMes(m)"
+          role="tab"
+          [attr.aria-selected]="mesSeleccionadoClave() === m.clave"
+        >
+          <div class="mes-top">
+            <span class="mes-nombre">{{ m.nombreMes }}</span>
+            <span class="mes-anio">{{ m.anio }}</span>
+          </div>
+
+          <div class="mes-monto">
+            <small>{{ moneda() }}</small>
+            <span>{{ m.montoGenerado | number: '1.2-2' }}</span>
+          </div>
+
+          <div class="mes-pie">
+            <span class="mes-conteo">
+              <app-icono nombre="carrito" [tamano]="13" />
+              {{ m.totalVentas }} {{ m.totalVentas === 1 ? 'venta' : 'ventas' }}
+            </span>
+            @if (m.esActual) {
+              <span class="insignia-actual">En curso</span>
+            }
+          </div>
+        </button>
+      }
+    </div>
+  </section>
+
+  <!-- DASHBOARD DEL MES SELECCIONADO -->
+  @if (mesActualInfo(); as mes) {
+    <div class="panel-mes-activo">
+      <!-- CABECERA DEL MES SELECCIONADO -->
+      <div class="resumen-mes-barra">
+        <div class="mes-destacado-info">
+          <div class="icono-mes-destacado">
+            <app-icono nombre="calendario" [tamano]="24" />
+          </div>
+          <div>
+            <div class="fila-titulo-mes">
+              <h2>Dashboard de {{ mes.etiqueta }}</h2>
+              @if (mes.esActual) {
+                <span class="etiqueta-vivo">Mes en curso</span>
+              } @else {
+                <span class="etiqueta-historico">Histórico cerrado</span>
+              }
+            </div>
+            <p class="empresa-sub">{{ empresaNombre() }} · Estadísticas consolidadas del periodo</p>
+          </div>
+        </div>
+
+        @if (comparativaMesPrevio(); as comp) {
+          <div class="comparativa-caja" [class.positivo]="comp.positivo" [class.negativo]="!comp.positivo">
+            <span class="comp-icono">
+              <app-icono [nombre]="comp.positivo ? 'tendencia' : 'alerta'" [tamano]="18" />
+            </span>
+            <div class="comp-textos">
+              <strong>{{ comp.texto }}</strong>
+              <small>Comparado con el mes previo</small>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- KPIS PRINCIPALES DEL MES (6 CARDS) -->
+      <div class="rejilla-kpis">
+        <!-- 1. Ingresos Totales -->
+        <div class="kpi-tarjeta kpi-ingresos">
+          <div class="kpi-encabezado">
+            <span class="kpi-icono"><app-icono nombre="tendencia" [tamano]="20" /></span>
+            <span class="kpi-titulo">Ingresos por Ventas</span>
+          </div>
+          <div class="kpi-valor">
+            <small>{{ moneda() }}</small>
+            <app-contador [valor]="ingresosTotales()" [decimales]="2" />
+          </div>
+          <p class="kpi-sub">Total facturado sin incluir anulaciones</p>
+        </div>
+
+        <!-- 2. Cantidad de Ventas -->
+        <div class="kpi-tarjeta">
+          <div class="kpi-encabezado">
+            <span class="kpi-icono"><app-icono nombre="carrito" [tamano]="20" /></span>
+            <span class="kpi-titulo">Ventas Realizadas</span>
+          </div>
+          <div class="kpi-valor">
+            <app-contador [valor]="cantidadVentas()" />
+          </div>
+          <p class="kpi-sub">Comprobantes emitidos en el mes</p>
+        </div>
+
+        <!-- 3. Ticket Promedio -->
+        <div class="kpi-tarjeta">
+          <div class="kpi-encabezado">
+            <span class="kpi-icono"><app-icono nombre="recibo" [tamano]="20" /></span>
+            <span class="kpi-titulo">Ticket Promedio</span>
+          </div>
+          <div class="kpi-valor">
+            <small>{{ moneda() }}</small>
+            <app-contador [valor]="ticketPromedio()" [decimales]="2" />
+          </div>
+          <p class="kpi-sub">Gasto promedio por transacción</p>
+        </div>
+
+        <!-- 4. Compras a Proveedores -->
+        <div class="kpi-tarjeta">
+          <div class="kpi-encabezado">
+            <span class="kpi-icono"><app-icono nombre="camion" [tamano]="20" /></span>
+            <span class="kpi-titulo">Gasto en Compras</span>
+          </div>
+          <div class="kpi-valor">
+            <small>{{ moneda() }}</small>
+            <app-contador [valor]="costoCompras()" [decimales]="2" />
+          </div>
+          <p class="kpi-sub">{{ comprasDelMesSeleccionado().length }} compras a proveedores</p>
+        </div>
+
+        <!-- 5. Margen Operativo Bruto -->
+        <div class="kpi-tarjeta" [class.kpi-margen-negativo]="margenOperativo() < 0">
+          <div class="kpi-encabezado">
+            <span class="kpi-icono"><app-icono nombre="check-circulo" [tamano]="20" /></span>
+            <span class="kpi-titulo">Margen Operativo Bruto</span>
+          </div>
+          <div class="kpi-valor" [class.negativo]="margenOperativo() < 0">
+            <small>{{ moneda() }}</small>
+            <app-contador [valor]="margenOperativo()" [decimales]="2" />
+          </div>
+          <p class="kpi-sub">Ingresos menos costo de compras</p>
+        </div>
+
+        <!-- 6. Clientes Únicos -->
+        <div class="kpi-tarjeta">
+          <div class="kpi-encabezado">
+            <span class="kpi-icono"><app-icono nombre="personas" [tamano]="20" /></span>
+            <span class="kpi-titulo">Clientes Únicos</span>
+          </div>
+          <div class="kpi-valor">
+            <app-contador [valor]="clientesAtendidos()" />
+          </div>
+          <p class="kpi-sub">Clientes atendidos en este mes</p>
+        </div>
+      </div>
+
+      <!-- ANALÍTICA VISUAL: EVOLUCIÓN DÍA A DÍA + MÉTODOS DE PAGO + TOP CLIENTES -->
+      <div class="rejilla-analitica">
+        <!-- Gráfico diario -->
+        <div class="hoja seccion-dias">
+          <div class="hoja-titulo">
+            <div>
+              <h2>Evolución Diaria de Ventas</h2>
+              <p>Comportamiento de la facturación día por día en {{ mes.nombreMes }}</p>
+            </div>
+            <span class="dias-badge">{{ evolucionDiaria().length }} días evaluados</span>
+          </div>
+
+          @if (ingresosTotales() > 0) {
+            <div class="grafico-dias-scroll">
+              <div class="grafico-dias-barras">
+                @for (d of evolucionDiaria(); track d.dia) {
+                  <div class="columna-dia" [class.es-hoy]="d.esHoy" [title]="d.fechaTexto + ': ' + moneda() + ' ' + (d.total | number: '1.2-2')">
+                    <span class="dia-monto-flotante" [class.visible]="d.total > 0">
+                      {{ d.total > 0 ? (d.total | number: '1.0-0') : '' }}
+                    </span>
+                    <div class="dia-barra-fondo">
+                      <div class="dia-barra-relleno" [style.height.%]="d.alto"></div>
+                    </div>
+                    <span class="dia-numero">{{ d.dia }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <app-vacio icono="tendencia" titulo="Sin movimientos" texto="No se registraron ventas en este mes." />
+          }
+        </div>
+
+        <!-- Desglose Métodos de Pago -->
+        <div class="hoja seccion-metodos">
+          <div class="hoja-titulo">
+            <div>
+              <h2>Métodos de Pago</h2>
+              <p>Canales de cobro utilizados</p>
+            </div>
+          </div>
+
+          @if (desgloseMetodos().length > 0) {
+            <div class="lista-metodos">
+              @for (m of desgloseMetodos(); track m.nombre) {
+                <div class="fila-metodo">
+                  <div class="metodo-info">
+                    <div class="metodo-color-tag">
+                      <span class="circulo-color" [style.background-color]="m.color"></span>
+                      <strong>{{ m.nombre }}</strong>
+                    </div>
+                    <span class="metodo-cifras">
+                      <b>{{ m.porcentaje }}%</b>
+                      <small>({{ moneda() }} {{ m.total | number: '1.2-2' }})</small>
+                    </span>
+                  </div>
+                  <div class="barra-progreso-fondo">
+                    <div
+                      class="barra-progreso-relleno"
+                      [style.width.%]="m.porcentaje"
+                      [style.background-color]="m.color"
+                    ></div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <app-vacio icono="informe" titulo="Sin datos" texto="Aún no hay métodos de pago registrados." />
+          }
+
+          <!-- Mini Top Clientes -->
+          <div class="bloque-top-clientes">
+            <h3><app-icono nombre="personas" [tamano]="16" /> Top Clientes del Mes</h3>
+            @if (topClientes().length > 0) {
+              <ul class="lista-top-clientes">
+                @for (c of topClientes(); track c.nombre; let i = $index) {
+                  <li>
+                    <span class="posicion-rank">#{{ i + 1 }}</span>
+                    <div class="cliente-datos">
+                      <strong>{{ c.nombre }}</strong>
+                      <small>{{ c.subtexto }}</small>
+                    </div>
+                    <span class="cliente-gasto">{{ moneda() }} {{ c.total | number: '1.2-2' }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="sin-top">Sin clientes registrados en este periodo.</p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- AUDITORÍA DE COMPROBANTES DEL MES -->
+      <section class="hoja seccion-comprobantes">
+        <div class="hoja-titulo flex-espacio">
+          <div>
+            <h2>Comprobantes del Mes</h2>
+            <p>Auditoría de todos los tickets y facturas emitidas en {{ mes.etiqueta }}</p>
+          </div>
+
+          <div class="herramientas-tabla">
+            <div class="buscador">
+              <app-icono nombre="buscar" [tamano]="16" />
+              <input
+                type="search"
+                placeholder="Buscar código, cliente o vendedor..."
+                [ngModel]="busquedaComprobante()"
+                (ngModelChange)="busquedaComprobante.set($event)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Chips de métodos de pago -->
+        <div class="filtros-chips" role="group" aria-label="Filtro de pago">
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtroMetodoPago() === 'Todos'"
+            (click)="filtroMetodoPago.set('Todos')"
+          >
+            Todos
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtroMetodoPago() === 'Efectivo'"
+            (click)="filtroMetodoPago.set('Efectivo')"
+          >
+            Efectivo
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtroMetodoPago() === 'Tarjeta'"
+            (click)="filtroMetodoPago.set('Tarjeta')"
+          >
+            Tarjeta
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtroMetodoPago() === 'Yape/Plin'"
+            (click)="filtroMetodoPago.set('Yape/Plin')"
+          >
+            Yape/Plin
+          </button>
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="filtroMetodoPago() === 'Transferencia'"
+            (click)="filtroMetodoPago.set('Transferencia')"
+          >
+            Transferencia
+          </button>
+        </div>
+
+        @if (comprobantesFiltrados().length === 0) {
+          <app-vacio
+            icono="buscar"
+            titulo="No se encontraron comprobantes"
+            texto="No hay comprobantes que coincidan con la búsqueda o filtro para este mes."
+          />
+        } @else {
+          <div class="tabla-envoltorio">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>N° Comprobante</th>
+                  <th>Fecha y Hora</th>
+                  <th>Cliente</th>
+                  <th>Vendedor</th>
+                  <th>Método de Pago</th>
+                  <th class="num">Total Facturado</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (v of comprobantesFiltrados(); track v.id) {
+                  <tr [class.fila-anulada]="v.estado === 'ANULADA'">
+                    <td>
+                      <strong class="codigo-venta">{{ v.id }}</strong>
+                    </td>
+                    <td>
+                      <span>{{ v.fecha }}</span>
+                      <small class="hora-comprobante">{{ v.hora }}</small>
+                    </td>
+                    <td>{{ v.cliente || 'Cliente General' }}</td>
+                    <td>{{ v.vendedor || 'Mostrador' }}</td>
+                    <td>
+                      <span class="insignia-pago">{{ v.metodoPago || v.metodo_pago }}</span>
+                    </td>
+                    <td class="num">
+                      <strong [class.tachado]="v.estado === 'ANULADA'">
+                        <small>{{ moneda() }} </small>{{ v.total | number: '1.2-2' }}
+                      </strong>
+                    </td>
+                    <td>
+                      @if (v.estado === 'ANULADA') {
+                        <span class="badge-estado badge-anulado">Anulada</span>
+                      } @else {
+                        <span class="badge-estado badge-completado">Emitida</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    </div>
+  }
+</div>

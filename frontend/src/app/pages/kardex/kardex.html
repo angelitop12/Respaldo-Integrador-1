@@ -1,0 +1,176 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Kardex</h1>
+      <p>El historial de cada entrada y salida de mercadería: quién la movió, cuándo, cuánto stock quedó y cuánto vale (método FIFO).</p>
+    </div>
+    <button type="button" class="btn btn-primario" (click)="exportarExcel()" [disabled]="movimientos().length === 0 || descargando()">
+      <app-icono nombre="recibo" /> {{ descargando() ? 'Generando Excel…' : 'Descargar Excel' }}
+    </button>
+  </header>
+
+  <section class="resumen" aria-label="Resumen de los movimientos mostrados">
+    <div class="dato">
+      <span class="dato-titulo">Movimientos</span>
+      <strong>{{ movimientos().length }}</strong>
+    </div>
+    <div class="dato dato-ok">
+      <span class="dato-titulo">Entradas</span>
+      <strong>+{{ entradas() | number: '1.0-2' }}</strong>
+    </div>
+    <div class="dato dato-alerta">
+      <span class="dato-titulo">Salidas</span>
+      <strong>−{{ salidas() | number: '1.0-2' }}</strong>
+    </div>
+    <div class="dato dato-ok">
+      <span class="dato-titulo">Total bruto entradas</span>
+      <strong>{{ moneda }} {{ totalBrutoEntradas() | number: '1.2-2' }}</strong>
+    </div>
+    <div class="dato dato-alerta">
+      <span class="dato-titulo">Total bruto salidas (costo)</span>
+      <strong>{{ moneda }} {{ totalBrutoSalidas() | number: '1.2-2' }}</strong>
+    </div>
+    <div class="dato">
+      <span class="dato-titulo">Stock actual del producto</span>
+      @if (saldo() !== null) {
+        <strong>{{ saldo() | number: '1.0-2' }} <small>{{ unidadSeleccion() }}</small></strong>
+      } @else {
+        <strong class="tenue">—</strong>
+        <small>Elige un producto</small>
+      }
+    </div>
+    <div class="dato">
+      <span class="dato-titulo">Saldo valorizado del producto</span>
+      @if (saldoValor() !== null) {
+        <strong>{{ moneda }} {{ saldoValor() | number: '1.2-2' }}</strong>
+        <small>Lo que cuesta el stock que queda</small>
+      } @else {
+        <strong class="tenue">—</strong>
+        <small>Elige un producto</small>
+      }
+    </div>
+  </section>
+
+  @if (filtroProducto !== '') {
+    <div class="producto-elegido" role="status">
+      <span>Mostrando solo el producto: <strong>{{ nombreProductoElegido() }}</strong></span>
+      <span class="acciones-producto">
+        <a class="btn" routerLink="/lotes" [queryParams]="{ productoId: filtroProducto }"><app-icono nombre="panel" [tamano]="16" /> Ver sus lotes FIFO</a>
+        <button type="button" class="btn" (click)="quitarProducto()"><app-icono nombre="cerrar" [tamano]="16" /> Ver todos los productos</button>
+      </span>
+    </div>
+  } @else {
+    <p class="pista-clic">Tip: haz clic en el nombre de un producto de la tabla para ver solo su Kardex.</p>
+  }
+
+  <p class="nota-fifo">
+    <strong>Total bruto</strong> = cantidad × costo unitario, sin IGV. El costo sale del método <strong>FIFO</strong>: las ventas descuentan primero
+    la compra más antigua. Mira los lotes en <em>Lotes (FIFO)</em>.
+  </p>
+
+  <section class="filtros-kardex" aria-label="Filtros">
+    <div class="campo">
+      <label for="k-producto">Producto</label>
+      <select id="k-producto" name="producto" [(ngModel)]="filtroProducto" (ngModelChange)="cargar()">
+        <option value="">Todos los productos</option>
+        @for (p of productos(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+      </select>
+    </div>
+    <div class="campo">
+      <label for="k-tipo">Tipo de movimiento</label>
+      <select id="k-tipo" name="tipo" [(ngModel)]="filtroTipo" (ngModelChange)="cargar()">
+        <option value="">Todos</option>
+        @for (t of tipos; track t.valor) { <option [value]="t.valor">{{ t.texto }}</option> }
+      </select>
+    </div>
+    <div class="campo">
+      <label for="k-desde">Desde</label>
+      <input id="k-desde" name="desde" type="date" [(ngModel)]="desde" (ngModelChange)="cargar()" />
+    </div>
+    <div class="campo">
+      <label for="k-hasta">Hasta</label>
+      <input id="k-hasta" name="hasta" type="date" [(ngModel)]="hasta" (ngModelChange)="cargar()" />
+    </div>
+  </section>
+
+  <div class="barra-herramientas">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" name="busqueda" placeholder="Buscar producto, código o N.º de venta/compra" aria-label="Buscar en el kardex"
+             [(ngModel)]="busqueda" (ngModelChange)="alEscribir()" />
+    </div>
+    <div class="filtros sin-margen" role="group" aria-label="Filtrar por sentido">
+      <button type="button" class="chip" [class.activo]="filtroSentido === ''" (click)="elegirSentido('')">Todos</button>
+      <button type="button" class="chip" [class.activo]="filtroSentido === 'ENTRADA'" (click)="elegirSentido('ENTRADA')">Entradas</button>
+      <button type="button" class="chip" [class.activo]="filtroSentido === 'SALIDA'" (click)="elegirSentido('SALIDA')">Salidas</button>
+    </div>
+    @if (hayFiltros()) {
+      <button type="button" class="btn" (click)="limpiar()"><app-icono nombre="cerrar" [tamano]="16" /> Limpiar filtros</button>
+    }
+  </div>
+
+  <section class="hoja">
+    @if (cargando() && movimientos().length === 0) {
+      <app-vacio icono="reloj" titulo="Cargando el historial…" texto="Un momento, estamos leyendo los movimientos." />
+    } @else if (fallo() && movimientos().length === 0) {
+      <app-vacio icono="alerta" titulo="No se pudo cargar" texto="Revisa que el backend esté encendido e inténtalo otra vez.">
+        <button type="button" class="btn btn-primario" (click)="cargar()">Reintentar</button>
+      </app-vacio>
+    } @else if (movimientos().length === 0) {
+      <app-vacio icono="recibo" titulo="Sin movimientos" texto="No hay movimientos con esos filtros. Prueba con otro producto o rango de fechas." />
+    } @else {
+      <div class="tabla-envoltorio">
+        <table class="tabla tabla-kardex">
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Producto</th>
+              <th>Movimiento</th>
+              <th class="num">Entrada</th>
+              <th class="num">Salida</th>
+              <th class="num">Costo unit.</th>
+              <th class="num">Total bruto</th>
+              <th class="num">Saldo</th>
+              <th class="num">Saldo valorizado</th>
+              <th>Referencia</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of movimientos(); track m.id) {
+              <tr>
+                <td class="fecha">{{ m.fechaTxt }}</td>
+                <td>
+                  <button type="button" class="enlace-producto" (click)="elegirProducto(m)" [attr.title]="'Ver solo el Kardex de ' + m.producto">
+                    <strong>{{ m.producto }}</strong>
+                  </button>
+                  @if (m.codigoInterno) { <small>{{ m.codigoInterno }}</small> }
+                </td>
+                <td>
+                  <span class="insignia" [class]="claseTipo(m)" [attr.title]="m.motivo || ''">{{ textoTipo(m.tipo) }}</span>
+                </td>
+                <td class="num entrada">@if (m.sentido === 'ENTRADA') { +{{ m.cantidad | number: '1.0-2' }} <small>{{ m.unidad }}</small> }</td>
+                <td class="num salida">@if (m.sentido === 'SALIDA') { −{{ m.cantidad | number: '1.0-2' }} <small>{{ m.unidad }}</small> }</td>
+                <td class="num">{{ moneda }} {{ m.costoUnitario | number: '1.2-2' }}</td>
+                <td class="num">
+                  <strong>{{ moneda }} {{ m.costoTotal | number: '1.2-2' }}</strong>
+                  @if (m.valorVenta !== null) { <small>venta: {{ moneda }} {{ m.valorVenta | number: '1.2-2' }}</small> }
+                </td>
+                <td class="num">
+                  <strong>{{ m.stockPosterior | number: '1.0-2' }}</strong>
+                  <small>antes: {{ m.stockAnterior | number: '1.0-2' }}</small>
+                </td>
+                <td class="num">{{ moneda }} {{ m.saldoValorizado | number: '1.2-2' }}</td>
+                <td>{{ m.referencia || '—' }}</td>
+                <td>{{ m.usuario || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (movimientos().length >= limite) {
+        <p class="aviso-limite">Se muestran los {{ limite }} movimientos más recientes. Usa los filtros para ver otros.</p>
+      }
+    }
+  </section>
+</div>

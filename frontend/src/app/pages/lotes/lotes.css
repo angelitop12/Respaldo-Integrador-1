@@ -1,0 +1,33 @@
+:host { display: block; }
+
+.como { margin-bottom: 20px; padding: 18px 22px; background: var(--acento-suave); border: 1px solid var(--borde); border-radius: var(--radio); }
+.como h2 { font-size: 16px; margin-bottom: 10px; }
+.como ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
+.como .ejemplo { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--borde-fuerte); font-size: 13.5px; color: var(--texto-suave); }
+.como .ejemplo strong { color: var(--texto); }
+
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.dato { padding: 16px 18px; background: var(--campo); border: 1px solid var(--borde); border-radius: var(--radio); display: grid; gap: 4px; }
+.dato-titulo { font-size: 12.5px; font-weight: 600; color: var(--texto-suave); }
+.dato strong { font: 600 26px/1.15 var(--fuente-titulo); font-variant-numeric: tabular-nums; }
+
+.barra-campo { margin: 0; min-width: 240px; }
+.sin-margen { margin-bottom: 0; }
+.solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.grupo { margin-bottom: 18px; }
+.grupo-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; padding: 18px 22px 12px; }
+.grupo-cab h2 { font-size: 18px; }
+.grupo-cab small { color: var(--texto-suave); font: 500 12px var(--fuente-mono); }
+.grupo-datos { display: flex; gap: 22px; margin: 0; flex-wrap: wrap; }
+.grupo-datos dt { font-size: 12px; font-weight: 600; color: var(--texto-suave); }
+.grupo-datos dd { margin: 2px 0 0; font: 600 15px var(--fuente-titulo); font-variant-numeric: tabular-nums; }
+
+.tabla-lotes .fecha { white-space: nowrap; font: 500 13px var(--fuente-mono); color: var(--texto-suave); }
+.tabla-lotes td.num { white-space: nowrap; }
+.tabla-lotes td small { color: var(--texto-suave); font-size: 12px; }
+.tabla-lotes tr.sale-primero td { background: var(--acento-suave); }
+.tabla-lotes tr.agotado { opacity: 0.55; }
+
+.barra { display: block; width: 72px; height: 5px; margin: 5px 0 0 auto; background: var(--borde); border-radius: 3px; overflow: hidden; }
+.barra > span { display: block; height: 100%; background: var(--acento); border-radius: 3px; }

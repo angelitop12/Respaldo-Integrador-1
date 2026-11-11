@@ -1,0 +1,12 @@
+:host { display: block; }
+.chip-bajo app-icono { color: var(--alerta); }
+.chip-bajo.activo { color: var(--alerta); background: var(--alerta-suave); border-color: var(--alerta); box-shadow: 0 0 16px -6px var(--alerta); }
+.nivel-col { min-width: 190px; }
+.nivel-texto { margin-top: 6px; }
+@media (max-width: 760px) { .nivel-col { display: none; } }
+.ubicacion-producto { display: inline-flex !important; align-items: center; gap: 4px; margin-top: 2px; font: 500 12px var(--fuente-mono); }
+.cantidad-fija { font: 600 15px var(--fuente-mono); }
+.cantidad-fija small { margin-left: 3px; font: 500 11px var(--fuente-mono); color: var(--texto-suave); display: inline; }
+.cantidad-fija.rojo { color: var(--alerta); }
+
+.ayuda { display: block; margin-top: 6px; color: var(--texto-suave); font-size: 12.5px; line-height: 1.4; }

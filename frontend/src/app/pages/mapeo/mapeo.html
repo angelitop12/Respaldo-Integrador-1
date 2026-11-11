@@ -1,0 +1,306 @@
+<div class="pagina">
+  <header class="encabezado">
+    <div>
+      <h1>Mapeo de productos</h1>
+      <p>Dónde está cada producto dentro del almacén y qué proveedor lo vende.</p>
+    </div>
+    @if (sesion.puede('ALMACENERO')) {
+      @if (pestana() === 'ubicacion') {
+        <button type="button" class="btn btn-primario" (click)="abrirNuevaUbicacion()"><app-icono nombre="mas" /> Nueva ubicación</button>
+      } @else {
+        <button type="button" class="btn btn-primario" (click)="abrirNuevoVinculo()"><app-icono nombre="mas" /> Vincular proveedor</button>
+      }
+    }
+  </header>
+
+  <div class="filtros" role="tablist" aria-label="Tipo de mapeo">
+    <button type="button" role="tab" class="chip" [class.activo]="pestana() === 'ubicacion'" [attr.aria-selected]="pestana() === 'ubicacion'" (click)="pestana.set('ubicacion')">
+      <app-icono nombre="ubicacion" [tamano]="16" /> Ubicación en el almacén
+    </button>
+    <button type="button" role="tab" class="chip" [class.activo]="pestana() === 'proveedor'" [attr.aria-selected]="pestana() === 'proveedor'" (click)="pestana.set('proveedor')">
+      <app-icono nombre="camion" [tamano]="16" /> Proveedores por producto
+    </button>
+  </div>
+
+  <div class="barra-herramientas">
+    <div class="buscador">
+      <app-icono nombre="buscar" />
+      <input type="search" name="busqueda" aria-label="Buscar"
+             [placeholder]="pestana() === 'ubicacion' ? 'Buscar producto, código o zona' : 'Buscar producto, proveedor o RUC'"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    @if (pestana() === 'proveedor') {
+      <select class="select-barra" name="filtroProveedor" aria-label="Filtrar por proveedor" [ngModel]="filtroProveedor()" (ngModelChange)="filtroProveedor.set($event)">
+        <option value="">Todos los proveedores</option>
+        @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.empresa }}</option> }
+      </select>
+      <button type="button" class="chip chip-bajo" [class.activo]="soloSinProveedor()" (click)="soloSinProveedor.set(!soloSinProveedor())">
+        <app-icono nombre="alerta" [tamano]="16" /> Sin proveedor <b>{{ cantidadSinProveedor() }}</b>
+      </button>
+    }
+  </div>
+
+  @if (pestana() === 'ubicacion') {
+    <section class="resumen" aria-label="Resumen del almacén">
+      <div class="dato"><span class="dato-titulo">Ubicaciones</span><strong>{{ ubicaciones().length }}</strong></div>
+      <div class="dato dato-ok"><span class="dato-titulo">Ocupadas</span><strong>{{ ocupadas() }}</strong></div>
+      <div class="dato"><span class="dato-titulo">Libres</span><strong>{{ libres() }}</strong></div>
+      <div class="dato" [class.dato-alerta]="sinUbicar().length > 0"><span class="dato-titulo">Productos sin ubicar</span><strong>{{ sinUbicar().length }}</strong></div>
+    </section>
+
+    @if (cargando() && ubicaciones().length === 0) {
+      <section class="hoja"><app-vacio icono="reloj" titulo="Cargando el almacén…" texto="Un momento, estamos leyendo las ubicaciones." /></section>
+    } @else if (ubicaciones().length === 0) {
+      <section class="hoja">
+        <app-vacio icono="ubicacion" titulo="Aún no hay ubicaciones" texto="Crea zonas, pasillos y estantes para saber dónde está cada producto.">
+          @if (sesion.puede('ALMACENERO')) {
+            <button type="button" class="btn btn-primario" (click)="abrirNuevaUbicacion()"><app-icono nombre="mas" /> Nueva ubicación</button>
+          }
+        </app-vacio>
+      </section>
+    } @else {
+      @for (z of zonas(); track z.nombre) {
+        <section class="zona">
+          <h2 class="zona-titulo"><app-icono nombre="tienda" [tamano]="20" /> {{ z.nombre }}</h2>
+          @for (pa of z.pasillos; track pa.nombre) {
+            <div class="pasillo">
+              <h3 class="pasillo-titulo">Pasillo {{ pa.nombre }}</h3>
+              <div class="estantes">
+                @for (u of pa.ubicaciones; track u.id) {
+                  <article class="estante" [class.libre]="u.productos.length === 0" [class.inactiva]="!u.activo">
+                    <header class="estante-cab">
+                      <div>
+                        <strong class="codigo">{{ u.codigo }}</strong>
+                        <small>Estante {{ u.estante }} · nivel {{ u.nivel }}</small>
+                      </div>
+                      @if (sesion.puede('ALMACENERO')) {
+                        <div class="acciones-estante">
+                          <button type="button" class="btn-icono" [attr.aria-label]="'Editar ' + u.codigo" (click)="abrirEditarUbicacion(u)"><app-icono nombre="lapiz" [tamano]="16" /></button>
+                          <button type="button" class="btn-icono peligro" [attr.aria-label]="'Eliminar ' + u.codigo" (click)="eliminarUbicacion(u)"><app-icono nombre="papelera" [tamano]="16" /></button>
+                        </div>
+                      }
+                    </header>
+                    @if (u.descripcion) { <p class="estante-desc">{{ u.descripcion }}</p> }
+                    @if (!u.activo) { <span class="insignia insignia-aviso">Inactiva</span> }
+                    @if (u.productos.length === 0) {
+                      <p class="estante-vacio">Libre</p>
+                    } @else {
+                      <ul class="estante-lista">
+                        @for (p of u.productos; track p.id) {
+                          <li>
+                            <span class="prod-nombre">{{ p.nombre }}</span>
+                            <span class="prod-stock">{{ p.stock | number: '1.0-2' }} {{ p.unidad }}</span>
+                            @if (sesion.puede('ALMACENERO')) {
+                              <button type="button" class="btn-icono" [attr.aria-label]="'Quitar ' + p.nombre + ' de esta ubicación'" title="Quitar de esta ubicación" (click)="ubicar(p.id, null)"><app-icono nombre="cerrar" [tamano]="14" /></button>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </article>
+                }
+              </div>
+            </div>
+          }
+        </section>
+      } @empty {
+        <section class="hoja"><app-vacio icono="buscar" titulo="Sin resultados" texto="Ninguna ubicación ni producto coincide con tu búsqueda." /></section>
+      }
+
+      @if (sinUbicar().length > 0) {
+        <section class="hoja sin-ubicar">
+          <div class="hoja-titulo">
+            <h2>Productos sin ubicación</h2>
+            <p>Elige dónde guardas cada uno para encontrarlo rápido.</p>
+          </div>
+          <div class="tabla-envoltorio">
+            <table class="tabla">
+              <thead><tr><th>Producto</th><th class="num">Stock</th><th>Ubicación</th></tr></thead>
+              <tbody>
+                @for (p of sinUbicar(); track p.id) {
+                  <tr>
+                    <td><strong>{{ p.nombre }}</strong><small>{{ p.categoria }}</small></td>
+                    <td class="num">{{ p.stock | number: '1.0-2' }} {{ p.unidad }}</td>
+                    <td>
+                      @if (sesion.puede('ALMACENERO')) {
+                        <select class="select-tabla" [attr.aria-label]="'Ubicación de ' + p.nombre" (change)="alElegirUbicacion(p.id, $any($event.target).value); $any($event.target).value = ''">
+                          <option value="">Elegir ubicación…</option>
+                          @for (u of ubicaciones(); track u.id) {
+                            @if (u.activo) { <option [value]="u.id">{{ etiqueta(u) }}</option> }
+                          }
+                        </select>
+                      } @else { — }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    }
+  } @else {
+    <section class="hoja">
+      @if (soloSinProveedor()) {
+        @if (productosSinProveedor().length === 0) {
+          <app-vacio icono="check-circulo" titulo="Todo cubierto" texto="Todos los productos tienen al menos un proveedor." />
+        } @else {
+          <div class="tabla-envoltorio">
+            <table class="tabla">
+              <thead><tr><th>Producto sin proveedor</th><th class="num">Stock</th><th class="acciones"><span class="sr-only">Acciones</span></th></tr></thead>
+              <tbody>
+                @for (p of productosSinProveedor(); track p.id) {
+                  <tr>
+                    <td><strong>{{ p.nombre }}</strong><small>{{ p.categoria }}</small></td>
+                    <td class="num">{{ p.stock | number: '1.0-2' }} {{ p.unidad }}</td>
+                    <td class="acciones">
+                      @if (sesion.puede('ALMACENERO')) {
+                        <button type="button" class="btn" (click)="abrirNuevoVinculo(p.id)"><app-icono nombre="mas" [tamano]="16" /> Vincular</button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      } @else if (vinculos().length === 0) {
+        <app-vacio icono="camion" titulo="Sin vínculos todavía" texto="Relaciona cada producto con el proveedor que te lo vende, su precio y su plazo de entrega.">
+          @if (sesion.puede('ALMACENERO')) {
+            <button type="button" class="btn btn-primario" (click)="abrirNuevoVinculo()"><app-icono nombre="mas" /> Vincular proveedor</button>
+          }
+        </app-vacio>
+      } @else if (filasVinculos().length === 0) {
+        <app-vacio icono="buscar" titulo="Sin resultados" texto="Ningún vínculo coincide con tu búsqueda o filtro." />
+      } @else {
+        <div class="tabla-envoltorio">
+          <table class="tabla">
+            <thead>
+              <tr><th>Producto</th><th>Proveedor</th><th>Código del proveedor</th><th class="num">Precio de compra</th><th class="num">Entrega</th><th class="acciones"><span class="sr-only">Acciones</span></th></tr>
+            </thead>
+            <tbody>
+              @for (v of filasVinculos(); track v.productoId + '-' + v.proveedorId) {
+                <tr>
+                  <td><strong>{{ v.producto }}</strong></td>
+                  <td>
+                    {{ v.proveedor }}
+                    @if (v.esPrincipal) { <span class="insignia insignia-ok principal">Principal</span> }
+                    @if (v.ruc) { <small>RUC {{ v.ruc }}</small> }
+                  </td>
+                  <td>{{ v.codigoProveedor || '—' }}</td>
+                  <td class="num"><span class="precio">S/ {{ v.precioCompra | number: '1.2-2' }}</span></td>
+                  <td class="num">{{ v.plazoEntregaDias }} {{ v.plazoEntregaDias === 1 ? 'día' : 'días' }}</td>
+                  <td class="acciones">
+                    @if (sesion.puede('ALMACENERO')) {
+                      <button type="button" class="btn-icono" [attr.aria-label]="'Editar vínculo de ' + v.producto" (click)="abrirEditarVinculo(v)"><app-icono nombre="lapiz" /></button>
+                      <button type="button" class="btn-icono peligro" [attr.aria-label]="'Quitar a ' + v.proveedor + ' de ' + v.producto" (click)="quitarVinculo(v)"><app-icono nombre="papelera" /></button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>
+
+@if (modalUbicacion()) {
+  <app-modal [titulo]="editandoUbicacion() === null ? 'Nueva ubicación' : 'Editar ubicación'" (cerrar)="modalUbicacion.set(false)">
+    <form (ngSubmit)="guardarUbicacion()" novalidate>
+      <div class="campo">
+        <label for="u-zona">Zona</label>
+        <input id="u-zona" name="zona" type="text" list="lista-zonas" placeholder="Ej. Sala de ventas, Almacén A" [(ngModel)]="formUbicacion.zona" />
+        <datalist id="lista-zonas">
+          @for (z of zonas(); track z.nombre) { <option [value]="z.nombre"></option> }
+        </datalist>
+      </div>
+      <div class="campos-3">
+        <div class="campo">
+          <label for="u-pasillo">Pasillo</label>
+          <input id="u-pasillo" name="pasillo" type="text" maxlength="10" [(ngModel)]="formUbicacion.pasillo" />
+        </div>
+        <div class="campo">
+          <label for="u-estante">Estante</label>
+          <input id="u-estante" name="estante" type="text" maxlength="10" [(ngModel)]="formUbicacion.estante" />
+        </div>
+        <div class="campo">
+          <label for="u-nivel">Nivel</label>
+          <input id="u-nivel" name="nivel" type="number" min="1" step="1" [(ngModel)]="formUbicacion.nivel" />
+        </div>
+      </div>
+      <div class="campo">
+        <label for="u-desc">Descripción (opcional)</label>
+        <input id="u-desc" name="descripcion" type="text" maxlength="150" placeholder="Ej. Cables y material eléctrico" [(ngModel)]="formUbicacion.descripcion" />
+      </div>
+      @if (editandoUbicacion() !== null) {
+        <label class="estado-fila">
+          <span class="palanca">
+            <input type="checkbox" role="switch" name="activo" [(ngModel)]="formUbicacion.activo" aria-label="Ubicación activa" />
+            <span class="pista"></span>
+          </span>
+          {{ formUbicacion.activo ? 'Activa' : 'Inactiva' }}
+        </label>
+      }
+
+      @if (errorUbicacion()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorUbicacion() }}</p>
+      }
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="modalUbicacion.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Guardar</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+@if (modalVinculo()) {
+  <app-modal [titulo]="editandoVinculo() ? 'Editar vínculo' : 'Vincular proveedor a un producto'" (cerrar)="modalVinculo.set(false)">
+    <form (ngSubmit)="guardarVinculo()" novalidate>
+      <div class="campo">
+        <label for="v-producto">Producto</label>
+        <select id="v-producto" name="productoId" [(ngModel)]="formVinculo.productoId" [disabled]="editandoVinculo()">
+          <option [ngValue]="null">Elige un producto…</option>
+          @for (p of productos(); track p.id) { <option [ngValue]="p.id">{{ p.nombre }}</option> }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="v-proveedor">Proveedor</label>
+        <select id="v-proveedor" name="proveedorId" [(ngModel)]="formVinculo.proveedorId" [disabled]="editandoVinculo()">
+          <option [ngValue]="null">Elige un proveedor…</option>
+          @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.empresa }}{{ p.ruc ? ' · ' + p.ruc : '' }}</option> }
+        </select>
+      </div>
+      <div class="campo">
+        <label for="v-codigo">Código del producto en el proveedor (opcional)</label>
+        <input id="v-codigo" name="codigoProveedor" type="text" maxlength="60" [(ngModel)]="formVinculo.codigoProveedor" />
+      </div>
+      <div class="campos-2">
+        <div class="campo">
+          <label for="v-precio">Precio de compra (S/)</label>
+          <input id="v-precio" name="precioCompra" type="number" min="0" step="0.01" [(ngModel)]="formVinculo.precioCompra" />
+        </div>
+        <div class="campo">
+          <label for="v-plazo">Plazo de entrega (días)</label>
+          <input id="v-plazo" name="plazoEntregaDias" type="number" min="0" step="1" [(ngModel)]="formVinculo.plazoEntregaDias" />
+        </div>
+      </div>
+      <label class="estado-fila">
+        <span class="palanca">
+          <input type="checkbox" role="switch" name="esPrincipal" [(ngModel)]="formVinculo.esPrincipal" aria-label="Proveedor principal" />
+          <span class="pista"></span>
+        </span>
+        Es el proveedor principal de este producto
+      </label>
+
+      @if (errorVinculo()) {
+        <p class="mensaje-error" role="alert"><app-icono nombre="alerta" [tamano]="18" /> {{ errorVinculo() }}</p>
+      }
+      <div class="modal-acciones">
+        <button type="button" class="btn" (click)="modalVinculo.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primario">Guardar</button>
+      </div>
+    </form>
+  </app-modal>
+}

@@ -1,0 +1,5 @@
+# Archivos que nunca deben subirse a GitHub
+node_modules/
+.env
+.angular/
+*.log
