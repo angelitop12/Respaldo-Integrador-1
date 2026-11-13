@@ -9,6 +9,7 @@ import { Modal } from '../../ui/modal/modal';
 import { Vacio } from '../../ui/vacio/vacio';
 import { API } from '../../api';
 import { Sesion } from '../../services/sesion';
+import { errCorreo, errNombre, errTelefono, errTexto, primerError } from '../../utils/validaciones';
 
 const FORM_VACIO = () => ({ nombre: '', telefono: '', email: '', direccion: '' });
 
@@ -95,10 +96,13 @@ export class Clientes implements OnInit {
 
   guardar() {
     const f = this.form;
-    if (!f.nombre.trim()) return this.errorForm.set('Escribe el nombre del cliente');
-    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) {
-      return this.errorForm.set('Ese correo no parece válido');
-    }
+    const problema = primerError(
+      errNombre(f.nombre, 'El nombre del cliente', { max: 150 }),
+      errTelefono(f.telefono, 'El teléfono'),
+      errCorreo(f.email, 'El correo', false),
+      errTexto(f.direccion, 'La dirección', { max: 300, obligatorio: false })
+    );
+    if (problema) return this.errorForm.set(problema);
 
     const datos = {
       nombre: f.nombre.trim(),

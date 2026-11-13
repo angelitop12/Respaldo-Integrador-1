@@ -5,6 +5,8 @@ import { HttpClient } from '@angular/common/http';
 import { Icono } from '../../ui/icono/icono';
 import { Regla } from '../../ui/regla/regla';
 import { API } from '../../api';
+import { errClave, errCorreo, errNombrePersona, errUsuario, primerError } from '../../utils/validaciones';
+
 
 @Component({
   selector: 'app-registro',
@@ -32,15 +34,16 @@ export class Registro {
     if (this.exito() || this.cargando()) return;
 
     if (!this.nombre.trim() || !this.correo.trim() || !this.usuario.trim() ||
-        !this.password || !this.confirmarPassword) {
+      !this.password || !this.confirmarPassword) {
       return this.fallar('Completa todos los campos');
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.correo)) {
-      return this.fallar('Ingresa un correo válido');
-    }
-    if (this.password.length < 6) {
-      return this.fallar('La contraseña debe tener al menos 6 caracteres');
-    }
+    const problema = primerError(
+      errNombrePersona(this.nombre, 'El nombre'),
+      errCorreo(this.correo, 'El correo'),
+      errUsuario(this.usuario, 'El usuario'),
+      errClave(this.password, 'La contraseña')
+    );
+    if (problema) return this.fallar(problema);
     if (this.password !== this.confirmarPassword) {
       return this.fallar('Las contraseñas no coinciden');
     }

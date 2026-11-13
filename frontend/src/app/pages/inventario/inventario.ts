@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { errNombre, errNumero, primerError } from '../../utils/validaciones';
 
 // Componentes y Servicios UI
 import { Confirmar } from '../../services/confirmar';
@@ -94,7 +95,7 @@ export class Inventario implements OnInit {
   cargarUbicaciones() {
     this.http.get<UbicacionLista[]>(`${API}/ubicaciones`).subscribe({
       next: (d) => this.ubicaciones.set(Array.isArray(d) ? d : []),
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -146,12 +147,12 @@ export class Inventario implements OnInit {
 
     // 1. Actualizamos rápido en pantalla para que se sienta instantáneo
     const stockAnterior = p.stock;
-    const productoActualizado = { 
-      ...p, 
+    const productoActualizado = {
+      ...p,
       stock: nuevo,
       // Mandamos ambos formatos por si tu backend espera snake_case o camelCase
       stockMinimo: p.stockMinimo,
-      stock_minimo: p.stockMinimo 
+      stock_minimo: p.stockMinimo
     };
 
     this.productos.update(l => l.map(x => x.id === p.id ? productoActualizado : x));
@@ -189,11 +190,16 @@ export class Inventario implements OnInit {
 
   guardar() {
     const f = this.form;
-    if (!f.nombre?.trim() || !f.categoria?.trim()) return this.errorForm.set('Escribe el nombre y la categoría');
-    if (f.precio === null || f.precio < 0) return this.errorForm.set('Escribe un precio válido');
-    if (f.costo !== null && f.costo !== undefined && f.costo !== '' && f.costo < 0) return this.errorForm.set('El costo de compra no puede ser negativo');
-    if (f.stock === null || f.stock < 0) return this.errorForm.set('Escribe el stock actual');
-    if (f.stockMinimo === null || f.stockMinimo < 0) return this.errorForm.set('Escribe el stock mínimo');
+    const problema = primerError(
+      errNombre(f.nombre, 'El nombre del producto', { min: 3 }),
+      errNombre(f.categoria, 'La categoría', { max: 100 }),
+      errNombre(f.marca, 'La marca', { max: 100, obligatorio: false }),
+      errNumero(f.precio, 'El precio de venta'),
+      errNumero(f.costo, 'El costo de compra', { obligatorio: false }),
+      errNumero(f.stock, 'El stock actual'),
+      errNumero(f.stockMinimo, 'El stock mínimo')
+    );
+    if (problema) return this.errorForm.set(problema);
 
     const id = this.editandoId();
     if (id !== null) {
@@ -245,8 +251,9 @@ export class Inventario implements OnInit {
 
   guardarCategoria() {
     const nom = this.formCategoria.nombre.trim();
-    if (!nom) {
-      this.errorCategoria.set('Escribe el nombre de la categoría');
+    const problemaCategoria = errNombre(nom, 'El nombre de la categoría', { max: 100 });
+    if (problemaCategoria) {
+      this.errorCategoria.set(problemaCategoria);
       return;
     }
 

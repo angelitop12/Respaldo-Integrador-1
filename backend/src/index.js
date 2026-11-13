@@ -43,6 +43,9 @@ class ErrorHttp extends Error {
   }
 }
 
+// Validaciones de formato y de contenido indebido (armas, +18, drogas, insultos): ver validaciones.js
+const V = require('./validaciones').crear(ErrorHttp);
+
 function responderError(res, error, mensajeGenerico, etiqueta) {
   if (error instanceof ErrorHttp) {
     return res.status(error.status).json({ error: error.message });
@@ -178,28 +181,20 @@ async function verificarUbicacion(db, id) {
   if (!u.rows[0].activo) throw new ErrorHttp(400, 'La ubicación indicada está inactiva');
 }
 
-// Lee y valida los datos de un producto (acepta los nombres de campo del frontend y los de la BD)
 function leerProducto(body) {
-  const nombre = texto(body.nombre);
-  if (!nombre) throw new ErrorHttp(400, 'El nombre del producto es obligatorio');
-  if (nombre.length > 200) throw new ErrorHttp(400, 'El nombre del producto no puede superar 200 caracteres');
+  const nombre = V.nombre(body.nombre, 'El nombre del producto', { min: 3, max: 200 });
 
-  const stock = numero(body.stock ?? body.stock_actual, 0);
-  const stockMinimo = numero(body.stockMinimo ?? body.stock_minimo, 5);
-  const precio = numero(body.precio ?? body.precio_venta, 0);
-  if ([stock, stockMinimo, precio].some(n => Number.isNaN(n) || n < 0)) {
-    throw new ErrorHttp(400, 'Stock, stock mínimo y precio deben ser números mayores o iguales a 0');
-  }
+  const stock = V.numero(body.stock ?? body.stock_actual, 'El stock', { porDefecto: 0 });
+  const stockMinimo = V.numero(body.stockMinimo ?? body.stock_minimo, 'El stock mínimo', { porDefecto: 5 });
+  const precio = V.numero(body.precio ?? body.precio_venta, 'El precio de venta', { porDefecto: 0, max: 1000000 });
 
   // Costo de compra por unidad (opcional): valoriza el stock inicial y los ajustes positivos en el FIFO
   const costoCrudo = body.costo ?? body.precioCompra ?? body.precio_compra;
-  const costo = costoCrudo === undefined || costoCrudo === null || costoCrudo === '' ? undefined : numero(costoCrudo, 0);
-  if (costo !== undefined && (Number.isNaN(costo) || costo < 0)) {
-    throw new ErrorHttp(400, 'El costo de compra debe ser un número mayor o igual a 0');
-  }
+  const costo = costoCrudo === undefined || costoCrudo === null || costoCrudo === ''
+    ? undefined
+    : V.numero(costoCrudo, 'El costo de compra', { max: 1000000 });
 
-  const marca = body.marca === undefined ? undefined : texto(body.marca);
-  if (marca && marca.length > 100) throw new ErrorHttp(400, 'La marca no puede superar 100 caracteres');
+  const marca = body.marca === undefined || body.marca === null ? undefined : V.nombre(body.marca, 'La marca', { max: 100, obligatorio: false });
   let ubicacionId;
   if (body.ubicacionId !== undefined) {
     ubicacionId = body.ubicacionId === null || body.ubicacionId === '' ? null : parseId(body.ubicacionId);
@@ -212,8 +207,8 @@ function leerProducto(body) {
     nombre,
     marca,
     ubicacionId,
-    categoria: texto(body.categoria) || 'General',
-    unidad: texto(body.unidad || body.unidad_medida) || 'und',
+    categoria: V.nombre(body.categoria || 'General', 'La categoría', { max: 100 }),
+    unidad: V.codigo(body.unidad || body.unidad_medida || 'und', 'La unidad de medida', { max: 10 }),
     stock: redondear2(stock),
     stockMinimo: redondear2(stockMinimo),
     precio: redondear2(precio),
@@ -368,12 +363,9 @@ app.get('/api/categorias', async (req, res) => {
 });
 
 app.post('/api/categorias', permitir(ROLES.ALMACENERO), async (req, res) => {
-  const nombre = texto((req.body || {}).nombre);
-  const descripcion = texto((req.body || {}).descripcion);
-  if (!nombre) {
-    return res.status(400).json({ error: 'El nombre de la categoría es obligatorio' });
-  }
   try {
+    const nombre = V.nombre((req.body || {}).nombre, 'El nombre de la categoría', { max: 100 });
+    const descripcion = V.texto((req.body || {}).descripcion, 'La descripción', { max: 255, obligatorio: false });
     const existente = await pool.query('SELECT id, nombre, descripcion, activo FROM categorias WHERE LOWER(nombre) = LOWER($1)', [nombre]);
     if (existente.rows.length > 0) {
       return res.status(200).json({ ok: true, categoria: existente.rows[0], mensaje: 'La categoría ya existía' });
@@ -429,8 +421,10 @@ app.get('/api/ventas', permitir(ROLES.VENDEDOR), async (req, res) => {
 app.post('/api/ventas', permitir(ROLES.VENDEDOR), async (req, res) => {
   const { cliente, metodoPago, carrito } = req.body || {};
 
-  if (!texto(cliente)) {
-    return res.status(400).json({ error: 'El nombre del cliente es obligatorio' });
+  try {
+    V.nombre(cliente, 'El nombre del cliente', { max: 150 });
+  } catch (e) {
+    return res.status(400).json({ error: e.message });
   }
   if (!Array.isArray(carrito) || carrito.length === 0) {
     return res.status(400).json({ error: 'El carrito debe contener al menos un producto' });
@@ -444,7 +438,7 @@ app.post('/api/ventas', permitir(ROLES.VENDEDOR), async (req, res) => {
         const cantidad = numero(it && it.cantidad, NaN);
         const precio = numero(it && it.precio, null);
         if (!productoId) throw new ErrorHttp(400, `Producto inválido en la posición ${i + 1} del carrito`);
-        if (!(cantidad > 0)) throw new ErrorHttp(400, `La cantidad debe ser mayor a 0 (posición ${i + 1} del carrito)`);
+        if (!(cantidad > 0) || cantidad > 100000) throw new ErrorHttp(400, `La cantidad debe ser mayor a 0 y menor a 100,000 (posición ${i + 1} del carrito)`);
         if (precio !== null && (Number.isNaN(precio) || precio < 0)) {
           throw new ErrorHttp(400, `Precio inválido en la posición ${i + 1} del carrito`);
         }
@@ -463,7 +457,7 @@ app.post('/api/ventas', permitir(ROLES.VENDEDOR), async (req, res) => {
       }
 
       // 1. Cliente (búsqueda o creación)
-      const nombreCliente = texto(cliente);
+      const nombreCliente = V.nombre(cliente, 'El nombre del cliente', { max: 150 });
       const clienteRes = await db.query('SELECT id FROM clientes WHERE LOWER(nombre) = LOWER($1) LIMIT 1', [nombreCliente]);
       let clienteId;
       if (clienteRes.rows.length > 0) {
@@ -535,9 +529,8 @@ app.post('/api/ventas', permitir(ROLES.VENDEDOR), async (req, res) => {
 app.put('/api/ventas/:codigo/anular', permitir(), async (req, res) => {
   const crudo = texto(req.params.codigo);
   const codigo = crudo.startsWith('#') ? crudo : `#${crudo}`;
-  const motivo = texto((req.body || {}).motivo) || 'Anulado desde el sistema POS';
-
   try {
+    const motivo = V.texto((req.body || {}).motivo, 'El motivo', { max: 255, obligatorio: false }) || 'Anulado desde el sistema POS';
     const anulada = await pool.query(
       "UPDATE ventas SET estado = 'ANULADA', motivo_anulacion = $2 WHERE codigo_comprobante = $1 AND estado = 'COMPLETADA' RETURNING id",
       [codigo, motivo]
@@ -731,19 +724,14 @@ app.get('/api/lotes', permitir(ROLES.ALMACENERO), async (req, res) => {
 const sinTildes = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 function leerUbicacion(body) {
-  const zona = texto(body.zona);
-  const pasillo = texto(body.pasillo).toUpperCase();
-  const estante = texto(body.estante).toUpperCase();
-  const nivel = numero(body.nivel, 1);
-  const descripcion = texto(body.descripcion);
+  const zona = V.nombre(body.zona, 'La zona', { max: 60 });
+  const pasillo = V.codigo(body.pasillo, 'El pasillo', { max: 10 }).toUpperCase();
+  const estante = V.codigo(body.estante, 'El estante', { max: 10 }).toUpperCase();
+  const nivel = V.numero(body.nivel, 'El nivel', { min: 1, max: 50, entero: true, porDefecto: 1 });
+  const descripcion = V.texto(body.descripcion, 'La descripción', { max: 150, obligatorio: false });
 
-  if (!zona || !pasillo || !estante) throw new ErrorHttp(400, 'Zona, pasillo y estante son obligatorios');
-  if (zona.length > 60) throw new ErrorHttp(400, 'La zona no puede superar 60 caracteres');
-  if (pasillo.length > 10 || estante.length > 10) throw new ErrorHttp(400, 'Pasillo y estante admiten hasta 10 caracteres');
-  if (!Number.isInteger(nivel) || nivel < 1 || nivel > 50) throw new ErrorHttp(400, 'El nivel debe ser un número entero entre 1 y 50');
-  if (descripcion.length > 150) throw new ErrorHttp(400, 'La descripción no puede superar 150 caracteres');
-
-  const codigo = (texto(body.codigo) || `${sinTildes(zona).charAt(0)}-${pasillo}-${estante}-${nivel}`).toUpperCase();
+  const codigoManual = texto(body.codigo);
+  const codigo = (codigoManual ? V.codigo(codigoManual, 'El código de la ubicación', { max: 30 }) : `${sinTildes(zona).charAt(0)}-${pasillo}-${estante}-${nivel}`).toUpperCase();
   if (codigo.length > 30) throw new ErrorHttp(400, 'El código no puede superar 30 caracteres');
   return { zona, pasillo, estante, nivel, descripcion, codigo };
 }
@@ -873,12 +861,9 @@ app.put('/api/productos-proveedores', permitir(ROLES.ALMACENERO), async (req, re
     const b = req.body || {};
     const productoId = validarId(b.productoId, 'productoId');
     const proveedorId = validarId(b.proveedorId, 'proveedorId');
-    const precio = numero(b.precioCompra, 0);
-    const plazo = numero(b.plazoEntregaDias, 1);
-    const codigoProveedor = texto(b.codigoProveedor);
-    if (Number.isNaN(precio) || precio < 0) throw new ErrorHttp(400, 'El precio de compra debe ser un número mayor o igual a 0');
-    if (!Number.isInteger(plazo) || plazo < 0 || plazo > 365) throw new ErrorHttp(400, 'El plazo de entrega debe ser un número entero de días (0 a 365)');
-    if (codigoProveedor.length > 60) throw new ErrorHttp(400, 'El código del proveedor no puede superar 60 caracteres');
+    const precio = V.numero(b.precioCompra, 'El precio de compra', { max: 1000000, porDefecto: 0 });
+    const plazo = V.numero(b.plazoEntregaDias, 'El plazo de entrega (días)', { min: 0, max: 365, entero: true, porDefecto: 1 });
+    const codigoProveedor = V.codigo(b.codigoProveedor, 'El código del proveedor', { max: 60, obligatorio: false });
     const esPrincipal = aBooleano(b.esPrincipal) === true;
 
     await enTransaccion(async (db) => {
@@ -942,15 +927,18 @@ app.get('/api/clientes', permitir(ROLES.VENDEDOR), async (req, res) => {
 
 app.post('/api/clientes', permitir(ROLES.VENDEDOR), async (req, res) => {
   const { nombre, telefono, email, direccion } = req.body || {};
-  if (!texto(nombre)) {
-    return res.status(400).json({ error: 'El nombre del cliente es obligatorio' });
-  }
   try {
+    const datos = [
+      V.nombre(nombre, 'El nombre del cliente', { max: 150 }),
+      V.telefono(telefono, 'El teléfono'),
+      V.correo(email, 'El correo', { obligatorio: false }),
+      V.texto(direccion, 'La dirección', { max: 300, obligatorio: false })
+    ];
     const resultado = await pool.query(
       `INSERT INTO clientes (nombre, telefono, email, direccion, activo)
        VALUES ($1, $2, $3, $4, true)
        RETURNING *`,
-      [texto(nombre), texto(telefono), texto(email), texto(direccion)]
+      datos
     );
     res.status(201).json(mapearCliente(resultado.rows[0]));
   } catch (error) {
@@ -963,9 +951,11 @@ app.put('/api/clientes/:id', permitir(ROLES.VENDEDOR), async (req, res) => {
   try {
     const id = validarId(req.params.id);
     const { nombre, telefono, email, direccion, activo } = req.body || {};
-    if (nombre !== undefined && !texto(nombre)) {
-      throw new ErrorHttp(400, 'El nombre del cliente no puede estar vacío');
-    }
+    const dato = (v, validar) => (v === undefined || v === null ? null : validar(v));
+    const nombreOk = dato(nombre, (v) => V.nombre(v, 'El nombre del cliente', { max: 150 }));
+    const telefonoOk = dato(telefono, (v) => V.telefono(v, 'El teléfono'));
+    const emailOk = dato(email, (v) => V.correo(v, 'El correo', { obligatorio: false }));
+    const direccionOk = dato(direccion, (v) => V.texto(v, 'La dirección', { max: 300, obligatorio: false }));
     const resultado = await pool.query(
       `UPDATE clientes
        SET nombre = COALESCE($1, nombre),
@@ -976,10 +966,7 @@ app.put('/api/clientes/:id', permitir(ROLES.VENDEDOR), async (req, res) => {
        WHERE id = $6
        RETURNING *`,
       [
-        nombre === undefined || nombre === null ? null : texto(nombre),
-        telefono === undefined || telefono === null ? null : texto(telefono),
-        email === undefined || email === null ? null : texto(email),
-        direccion === undefined || direccion === null ? null : texto(direccion),
+        nombreOk, telefonoOk, emailOk, direccionOk,
         aBooleano(activo),
         id
       ]
@@ -1027,22 +1014,18 @@ const MENSAJE_RUC_INVALIDO = 'El RUC no es válido: debe tener 11 dígitos, empe
 
 // Lee y valida los datos de un proveedor. Los campos que no llegan quedan en `undefined` (= no cambiar).
 function leerProveedor(body, { creando }) {
-  const campo = (valor, nombre, max) => {
-    if (valor === undefined || valor === null) return undefined;
-    const t = texto(String(valor));
-    if (t.length > max) throw new ErrorHttp(400, `${nombre} no puede superar ${max} caracteres`);
-    return t;
-  };
+  const ausente = (valor) => valor === undefined || valor === null;
+  const campo = (valor, nombre, max, opciones = {}) => (ausente(valor) ? undefined
+    : V.texto(String(valor), nombre, { max, obligatorio: false, ...opciones }));
 
-  const empresa = campo(body.empresa, 'El nombre de la empresa', 200);
+  const empresa = ausente(body.empresa) ? undefined : V.nombre(String(body.empresa), 'El nombre de la empresa', { max: 200 });
   if (creando && !empresa) throw new ErrorHttp(400, 'El nombre de la empresa es obligatorio');
-  if (empresa !== undefined && !empresa) throw new ErrorHttp(400, 'El nombre de la empresa no puede estar vacío');
 
-  const ruc = campo(body.ruc, 'El RUC', 11);
+  const ruc = ausente(body.ruc) ? undefined : texto(String(body.ruc));
+  if (ruc !== undefined && ruc.length > 11) throw new ErrorHttp(400, 'El RUC no puede superar 11 caracteres');
   if (creando && !ruc) throw new ErrorHttp(400, 'El RUC del proveedor es obligatorio');
 
-  const email = campo(body.email, 'El correo', 150);
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ErrorHttp(400, 'El correo del proveedor no es válido');
+  const email = ausente(body.email) ? undefined : V.correo(body.email, 'El correo del proveedor', { obligatorio: false });
 
   let condicionPago;
   if (body.condicionPago !== undefined && body.condicionPago !== null) {
@@ -1057,10 +1040,10 @@ function leerProveedor(body, { creando }) {
 
   return {
     empresa, ruc, email, condicionPago, diasCredito,
-    contacto: campo(body.contacto, 'El contacto', 150),
-    telefono: campo(body.telefono, 'El teléfono', 30),
+    contacto: ausente(body.contacto) ? undefined : V.nombrePersona(String(body.contacto), 'El contacto', { max: 150, obligatorio: false }),
+    telefono: ausente(body.telefono) ? undefined : V.telefono(String(body.telefono), 'El teléfono'),
     direccion: campo(body.direccion, 'La dirección', 300),
-    ciudad: campo(body.ciudad, 'La ciudad', 100),
+    ciudad: ausente(body.ciudad) ? undefined : V.nombre(String(body.ciudad), 'La ciudad', { max: 100, obligatorio: false }),
     productos: campo(body.productos, 'El detalle de productos', 255),
     observaciones: campo(body.observaciones, 'Las observaciones', 1000)
   };
@@ -1188,15 +1171,10 @@ app.get('/api/compras', permitir(ROLES.ALMACENERO), async (req, res) => {
 app.post('/api/compras', permitir(ROLES.ALMACENERO), async (req, res) => {
   const { proveedor, descripcion, cantidad, costoTotal, producto_id, estado } = req.body || {};
   try {
-    const nombreProveedor = texto(proveedor);
-    const descripcionCompra = texto(descripcion);
-    if (!nombreProveedor || !descripcionCompra) {
-      throw new ErrorHttp(400, 'El proveedor y la descripción son obligatorios');
-    }
-    const cant = numero(cantidad, 1);
-    const costo = numero(costoTotal, 0);
-    if (!(cant > 0)) throw new ErrorHttp(400, 'La cantidad debe ser mayor a 0');
-    if (Number.isNaN(costo) || costo < 0) throw new ErrorHttp(400, 'El costo total debe ser un número mayor o igual a 0');
+    const nombreProveedor = V.nombre(proveedor, 'El proveedor', { max: 200 });
+    const descripcionCompra = V.nombre(descripcion, 'La descripción de la compra', { min: 3, max: 255 });
+    const cant = V.numero(cantidad, 'La cantidad', { min: 0.01, max: 1000000, porDefecto: 1 });
+    const costo = V.numero(costoTotal, 'El costo total', { max: 100000000, porDefecto: 0 });
     const costoUnitario = redondear2(costo / cant);
     const recibida = String(estado || '').toLowerCase() !== 'pendiente';
 
@@ -1344,7 +1322,9 @@ app.get('/api/reportes', async (req, res) => {
 app.post('/api/reportes', async (req, res) => {
   try {
     const { titulo, autor, categoria, descripcion, fecha, estado } = req.body || {};
-    if (!texto(titulo)) throw new ErrorHttp(400, 'El título del reporte es obligatorio');
+    const tituloOk = V.nombre(titulo, 'El título del reporte', { min: 3, max: 150 });
+    const descripcionOk = V.texto(descripcion, 'La descripción del reporte', { max: 1000, obligatorio: false });
+    const autorOk = V.nombrePersona(autor || 'Usuario', 'El autor', { max: 100 });
     if (!CATEGORIAS_REPORTE.includes(categoria)) {
       throw new ErrorHttp(400, `Categoría inválida. Usa una de: ${CATEGORIAS_REPORTE.join(', ')}`);
     }
@@ -1363,7 +1343,7 @@ app.post('/api/reportes', async (req, res) => {
       `INSERT INTO reportes (titulo, autor_nombre, categoria, descripcion, fecha, estado)
        VALUES ($1, $2, $3, $4, COALESCE($5::date, (CURRENT_TIMESTAMP AT TIME ZONE ${ZONA})::date), $6)
        RETURNING id, titulo, autor_nombre AS autor, categoria, descripcion, TO_CHAR(fecha, 'DD/MM/YYYY') AS fecha, estado`,
-      [texto(titulo), texto(autor) || 'Usuario', categoria, texto(descripcion), fechaSql, estadoFinal]
+      [tituloOk, autorOk, categoria, descripcionOk, fechaSql, estadoFinal]
     );
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
@@ -1431,11 +1411,14 @@ app.get('/api/configuracion', async (req, res) => {
 app.put('/api/configuracion/empresa', permitir(), async (req, res) => {
   try {
     const { nombre, ruc, direccion, telefono, moneda } = req.body || {};
-    if (!texto(nombre)) throw new ErrorHttp(400, 'El nombre de la empresa es obligatorio');
+    const nombreOk = V.nombre(nombre, 'El nombre de la empresa', { max: 150 });
     if (texto(ruc) && !/^\d{11}$/.test(texto(ruc))) throw new ErrorHttp(400, 'El RUC debe tener 11 dígitos');
-    if (texto(moneda).length > 5) throw new ErrorHttp(400, 'El símbolo de moneda es demasiado largo');
+    const direccionOk = V.texto(direccion, 'La dirección', { max: 300, obligatorio: false });
+    const telefonoOk = V.telefono(telefono, 'El teléfono');
+    const monedaOk = texto(moneda) || 'S/';
+    if (!['S/', '$', 'US$', 'USD', 'PEN', '€'].includes(monedaOk)) throw new ErrorHttp(400, 'El símbolo de moneda no es válido (usa S/, $, US$, USD, PEN o €)');
 
-    const valores = [texto(nombre), texto(ruc), texto(direccion), texto(telefono), texto(moneda) || 'S/'];
+    const valores = [nombreOk, texto(ruc), direccionOk, telefonoOk, monedaOk];
     const existente = await pool.query('SELECT id FROM configuracion_empresa ORDER BY id ASC LIMIT 1');
     if (existente.rows.length > 0) {
       await pool.query(
@@ -1460,15 +1443,14 @@ app.put('/api/configuracion/empresa', permitir(), async (req, res) => {
 app.put('/api/configuracion/perfil', async (req, res) => {
   try {
     const { nombre, correo } = req.body || {};
-    if (!texto(nombre)) throw new ErrorHttp(400, 'El nombre es obligatorio');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(texto(correo))) throw new ErrorHttp(400, 'Ingresa un correo electrónico válido');
-
+    const nombreOk = V.nombrePersona(nombre, 'El nombre');
+    const correoOk = V.correo(correo, 'El correo electrónico');
     const destino = await pool.query('SELECT id FROM usuarios WHERE id = $1', [req.usuario.id]);
     if (destino.rows.length === 0) throw new ErrorHttp(404, 'Usuario no encontrado');
 
     await pool.query(
       'UPDATE usuarios SET nombre_completo = $1, email = $2 WHERE id = $3',
-      [texto(nombre), texto(correo).toLowerCase(), destino.rows[0].id]
+      [nombreOk, correoOk, destino.rows[0].id]
     );
     res.json({ ok: true, mensaje: 'Perfil actualizado correctamente' });
   } catch (error) {
@@ -1491,24 +1473,20 @@ app.post(['/api/auth/registro', '/api/auth/register'], async (req, res) => {
     return res.status(403).json({ error: 'El registro está cerrado. Pide a un administrador que te cree la cuenta.' });
   }
   const { nombre, nombre_completo, correo, email, usuario, password, telefono } = req.body || {};
-  const nombreFinal = texto(nombre || nombre_completo);
-  const correoFinal = texto(correo || email).toLowerCase();
-  const usuarioFinal = texto(usuario);
-  const passwordFinal = typeof password === 'string' ? password : '';
 
-  if (!nombreFinal || !correoFinal || !usuarioFinal || !passwordFinal) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  let nombreFinal, correoFinal, usuarioFinal, passwordFinal, telefonoFinal;
+  try {
+    if (!texto(nombre || nombre_completo) || !texto(correo || email) || !texto(usuario) || !password) {
+      throw new ErrorHttp(400, 'Todos los campos son obligatorios');
+    }
+    nombreFinal = V.nombrePersona(nombre || nombre_completo, 'El nombre');
+    correoFinal = V.correo(correo || email, 'El correo electrónico');
+    usuarioFinal = V.usuario(usuario, 'El usuario');
+    passwordFinal = V.clave(password, 'La contraseña');
+    telefonoFinal = V.telefono(telefono, 'El teléfono');
+  } catch (errorDatos) {
+    return res.status(400).json({ error: errorDatos.message });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoFinal)) {
-    return res.status(400).json({ error: 'Ingresa un correo electrónico válido' });
-  }
-  if (passwordFinal.length < 6) {
-    return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-  }
-  if (passwordFinal.length > 72) {
-    return res.status(400).json({ error: 'La contraseña no puede superar 72 caracteres' });
-  }
-
   try {
     const existeUsuario = await pool.query('SELECT 1 FROM usuarios WHERE LOWER(usuario) = LOWER($1)', [usuarioFinal]);
     if (existeUsuario.rows.length > 0) {
@@ -1530,7 +1508,7 @@ app.post(['/api/auth/registro', '/api/auth/register'], async (req, res) => {
       `INSERT INTO usuarios (rol_id, nombre_completo, usuario, email, password_hash, telefono, activo)
        VALUES ($1, $2, $3, $4, crypt($5, gen_salt('bf')), $6, true)
        RETURNING id, nombre_completo, usuario, email`,
-      [rolRes.rows[0].id, nombreFinal, usuarioFinal, correoFinal, passwordFinal, texto(telefono) || null]
+      [rolRes.rows[0].id, nombreFinal, usuarioFinal, correoFinal, passwordFinal, telefonoFinal || null]
     );
     const u = nuevo.rows[0];
 
@@ -1638,8 +1616,7 @@ app.put('/api/auth/cambiar-clave', async (req, res) => {
     const claveNueva = typeof nueva === 'string' ? nueva : '';
 
     if (!claveActual || !claveNueva) throw new ErrorHttp(400, 'Completa la contraseña actual y la nueva');
-    if (claveNueva.length < 6) throw new ErrorHttp(400, 'La nueva contraseña debe tener al menos 6 caracteres');
-    if (claveNueva.length > 72) throw new ErrorHttp(400, 'La contraseña no puede superar 72 caracteres');
+    V.clave(claveNueva, 'La nueva contraseña');
     if (claveNueva === claveActual) throw new ErrorHttp(400, 'La nueva contraseña debe ser distinta a la actual');
 
     const clave = `${req.ip}|cambiar-clave|${id}`;
@@ -1766,8 +1743,7 @@ app.post('/api/auth/restablecer-clave', async (req, res) => {
 
     if (!ident || !cod || !claveNueva) throw new ErrorHttp(400, 'Completa el usuario, el código y la nueva contraseña');
     if (!/^\d{6}$/.test(cod)) throw new ErrorHttp(400, 'El código tiene 6 dígitos');
-    if (claveNueva.length < 6) throw new ErrorHttp(400, 'La nueva contraseña debe tener al menos 6 caracteres');
-    if (claveNueva.length > 72) throw new ErrorHttp(400, 'La contraseña no puede superar 72 caracteres');
+    V.clave(claveNueva, 'La nueva contraseña');
 
     const clave = `${req.ip}|restablecer|${ident.toLowerCase()}`;
     if (loginBloqueado(clave)) throw new ErrorHttp(429, 'Demasiados intentos fallidos. Intenta de nuevo en unos minutos.');

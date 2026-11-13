@@ -9,6 +9,7 @@ import { Toast } from '../../services/toast';
 import { Icono } from '../../ui/icono/icono';
 import { Modal } from '../../ui/modal/modal';
 import { Vacio } from '../../ui/vacio/vacio';
+import { errCodigo, errNombre, errNumero, errTexto, primerError } from '../../utils/validaciones';
 
 interface ProductoUbicado { id: number; nombre: string; stock: number; unidad: string; }
 
@@ -123,7 +124,7 @@ export class Mapeo implements OnInit {
     this.cargarVinculos();
     this.http.get<ProveedorLista[]>(`${API}/proveedores`).subscribe({
       next: (d) => this.proveedores.set((d || []).map(p => ({ id: p.id, empresa: p.empresa, ruc: p.ruc || '' }))),
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -143,14 +144,14 @@ export class Mapeo implements OnInit {
   cargarProductos() {
     this.http.get<any[]>(`${API}/inventario`).subscribe({
       next: (d) => this.productos.set((d || []).map(p => ({ ...p, stock: Number(p.stock) }))),
-      error: () => {}
+      error: () => { }
     });
   }
 
   cargarVinculos() {
     this.http.get<Vinculo[]>(`${API}/productos-proveedores`).subscribe({
       next: (d) => this.vinculos.set(d || []),
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -180,12 +181,15 @@ export class Mapeo implements OnInit {
 
   guardarUbicacion() {
     const f = this.formUbicacion;
-    if (!f.zona.trim() || !String(f.pasillo).trim() || !String(f.estante).trim()) {
-      return this.errorUbicacion.set('Escribe la zona, el pasillo y el estante');
-    }
     const nivel = Number(f.nivel);
-    if (!Number.isInteger(nivel) || nivel < 1) return this.errorUbicacion.set('El nivel debe ser un número entero desde 1');
-
+    const problemaUbicacion = primerError(
+      errNombre(f.zona, 'La zona', { max: 60 }),
+      errCodigo(f.pasillo, 'El pasillo', { max: 10 }),
+      errCodigo(f.estante, 'El estante', { max: 10 }),
+      errNumero(nivel, 'El nivel', { min: 1, max: 50, entero: true }),
+      errTexto(f.descripcion, 'La descripción', { max: 150, obligatorio: false })
+    );
+    if (problemaUbicacion) return this.errorUbicacion.set(problemaUbicacion);
     const datos = { zona: f.zona.trim(), pasillo: String(f.pasillo).trim(), estante: String(f.estante).trim(), nivel, descripcion: f.descripcion.trim(), activo: f.activo };
     const id = this.editandoUbicacion();
     const peticion = id === null
@@ -245,9 +249,13 @@ export class Mapeo implements OnInit {
     const f = this.formVinculo;
     if (f.productoId === null || f.proveedorId === null) return this.errorVinculo.set('Elige el producto y el proveedor');
     const precio = Number(f.precioCompra ?? 0);
-    if (!Number.isFinite(precio) || precio < 0) return this.errorVinculo.set('Escribe un precio de compra válido');
     const plazo = Number(f.plazoEntregaDias);
-    if (!Number.isInteger(plazo) || plazo < 0) return this.errorVinculo.set('El plazo de entrega debe ser un número entero de días');
+    const problemaVinculo = primerError(
+      errNumero(precio, 'El precio de compra'),
+      errNumero(plazo, 'El plazo de entrega (días)', { min: 0, max: 365, entero: true }),
+      errCodigo(f.codigoProveedor, 'El código del proveedor', { max: 60, obligatorio: false })
+    );
+    if (problemaVinculo) return this.errorVinculo.set(problemaVinculo);
 
     this.http.put<any>(`${API}/productos-proveedores`, {
       productoId: f.productoId, proveedorId: f.proveedorId, codigoProveedor: f.codigoProveedor.trim(),

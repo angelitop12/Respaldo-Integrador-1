@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Icono } from '../../ui/icono/icono';
 import { Regla } from '../../ui/regla/regla';
 import { API } from '../../api';
+import { errClave } from '../../utils/validaciones';
 
 // Olvidé mi contraseña: paso 1 = pedir el código, paso 2 = escribir el código y la contraseña nueva
 @Component({
@@ -54,7 +55,8 @@ export class Recuperar {
   cambiarClave() {
     if (this.cargando() || this.exito()) return;
     if (!/^\d{6}$/.test(this.codigo.trim())) return this.fallar('El código tiene 6 dígitos');
-    if (this.nueva.length < 6) return this.fallar('La contraseña debe tener al menos 6 caracteres');
+    const problemaClave = errClave(this.nueva, 'La contraseña');
+    if (problemaClave) return this.fallar(problemaClave);
     if (this.nueva !== this.confirmar) return this.fallar('Las contraseñas no coinciden');
 
     this.cargando.set(true);

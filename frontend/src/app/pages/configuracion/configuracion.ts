@@ -8,6 +8,7 @@ import { Tema } from '../../services/tema';
 import { Toast } from '../../services/toast';
 import { Icono } from '../../ui/icono/icono';
 import { API } from '../../api';
+import { errClave, errCorreo, errNombre, errNombrePersona, errTelefono, errTexto, primerError } from '../../utils/validaciones';
 
 @Component({
   selector: 'app-configuracion',
@@ -50,7 +51,7 @@ export class Configuracion implements OnInit {
           this.almacen.perfil.set(this.perfil);
         }
       },
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -58,6 +59,12 @@ export class Configuracion implements OnInit {
     if (!this.empresa.nombre.trim()) return this.toast.error('La empresa necesita un nombre');
     const ruc = (this.empresa.ruc || '').trim();
     if (ruc && !/^\d{11}$/.test(ruc)) return this.toast.error('El RUC debe tener 11 dígitos');
+    const problemaEmpresa = primerError(
+      errNombre(this.empresa.nombre, 'El nombre de la empresa', { max: 150 }),
+      errTexto(this.empresa.direccion, 'La dirección', { max: 300, obligatorio: false }),
+      errTelefono(this.empresa.telefono, 'El teléfono')
+    );
+    if (problemaEmpresa) return this.toast.error(problemaEmpresa);
     const datosGuardar = { ...this.empresa, nombre: this.empresa.nombre.trim() };
     this.almacen.empresa.set(datosGuardar);
 
@@ -69,9 +76,8 @@ export class Configuracion implements OnInit {
 
   guardarPerfil() {
     if (!this.perfil.nombre.trim()) return this.toast.error('Escribe tu nombre');
-    if (this.perfil.correo.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.perfil.correo)) {
-      return this.toast.error('Ese correo no parece válido');
-    }
+    const problemaPerfil = primerError(errNombrePersona(this.perfil.nombre, 'Tu nombre'), errCorreo(this.perfil.correo, 'El correo'));
+    if (problemaPerfil) return this.toast.error(problemaPerfil);
     const datosPerfil = { nombre: this.perfil.nombre.trim(), correo: this.perfil.correo.trim() };
 
     this.http.put(`${API}/configuracion/perfil`, datosPerfil).subscribe({
@@ -92,7 +98,8 @@ export class Configuracion implements OnInit {
   cambiarClave() {
     const c = this.clave;
     if (!c.actual || !c.nueva || !c.repetir) return this.errorClave.set('Completa los tres campos');
-    if (c.nueva.length < 6) return this.errorClave.set('La nueva contraseña debe tener al menos 6 caracteres');
+    const problemaClave = errClave(c.nueva, 'La nueva contraseña');
+    if (problemaClave) return this.errorClave.set(problemaClave);
     if (c.nueva !== c.repetir) return this.errorClave.set('Las contraseñas nuevas no coinciden');
     if (c.nueva === c.actual) return this.errorClave.set('La nueva contraseña debe ser distinta a la actual');
 

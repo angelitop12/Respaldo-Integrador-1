@@ -11,6 +11,7 @@ import { Modal } from '../../ui/modal/modal';
 import { Vacio } from '../../ui/vacio/vacio';
 import { API } from '../../api';
 import { Sesion } from '../../services/sesion';
+import { errNombre, errTexto, primerError } from '../../utils/validaciones';
 
 type Estado = Reporte['estado'];
 
@@ -81,6 +82,11 @@ export class Reportes implements OnInit {
   guardar() {
     if (!this.form.titulo.trim()) return this.errorForm.set('Ponle un título al reporte');
     if (!this.form.descripcion.trim()) return this.errorForm.set('Cuéntanos qué pasó');
+    const problema = primerError(
+      errNombre(this.form.titulo, 'El título del reporte', { min: 3, max: 150 }),
+      errTexto(this.form.descripcion, 'La descripción del reporte', { max: 1000 })
+    );
+    if (problema) return this.errorForm.set(problema);
 
     const payload = {
       titulo: this.form.titulo.trim(),

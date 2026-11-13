@@ -11,6 +11,8 @@ import { Modal } from '../../ui/modal/modal';
 import { Vacio } from '../../ui/vacio/vacio';
 import { API } from '../../api';
 import { Sesion } from '../../services/sesion';
+import { errNombre, errNumero, primerError } from '../../utils/validaciones';
+
 
 @Component({
   selector: 'app-compras',
@@ -124,9 +126,13 @@ export class Compras implements OnInit {
 
   guardar() {
     const f = this.form;
-    if (!f.proveedor.trim() || !f.descripcion.trim()) return this.errorForm.set('Indica el proveedor y qué producto se compró');
-    if (f.cantidad === null || f.cantidad <= 0) return this.errorForm.set('Escribe una cantidad mayor a cero');
-    if (f.costoTotal === null || f.costoTotal < 0) return this.errorForm.set('Escribe el costo total');
+    const problema = primerError(
+      errNombre(f.proveedor, 'El proveedor'),
+      errNombre(f.descripcion, 'La descripción de la compra', { min: 3, max: 255 }),
+      errNumero(f.cantidad, 'La cantidad', { min: 0.01 }),
+      errNumero(f.costoTotal, 'El costo total', { max: 100000000 })
+    );
+    if (problema) return this.errorForm.set(problema);
 
     // Intentamos resolver el producto_id si aún no estaba seteado
     if (!f.producto_id) {

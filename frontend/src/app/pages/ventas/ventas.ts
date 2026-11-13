@@ -12,6 +12,7 @@ import { Icono } from '../../ui/icono/icono';
 import { Modal } from '../../ui/modal/modal';
 import { Vacio } from '../../ui/vacio/vacio';
 import { API } from '../../api';
+import { errNombre } from '../../utils/validaciones';
 
 export interface VentaItem {
   id?: number;
@@ -55,8 +56,8 @@ export class Ventas implements OnInit {
 
   // --- ESTADOS DE BASE DE DATOS (MUÑOZ) ---
   ventas = signal<Venta[]>([]);
-  productos = signal<any[]>([]); 
-  carrito = signal<ProductoCart[]>([]); 
+  productos = signal<any[]>([]);
+  carrito = signal<ProductoCart[]>([]);
   modalAbierto = signal(false);
 
   // Fila expandida en la tabla de ventas
@@ -72,11 +73,11 @@ export class Ventas implements OnInit {
 
   // --- FORMULARIOS ---
   form = { cliente: '', vendedor: '', metodoPago: 'Efectivo' };
-  formProducto = { id: '', cantidad: 1 }; 
+  formProducto = { id: '', cantidad: 1 };
 
   // --- COMPUTADOS ---
   // Solo se suman ventas vigentes (excluyendo ANULADA)
-  totalAcumulado = computed(() => 
+  totalAcumulado = computed(() =>
     this.ventas()
       .filter(v => v.estado !== 'ANULADA')
       .reduce((s, v) => s + v.total, 0)
@@ -86,7 +87,7 @@ export class Ventas implements OnInit {
 
   // Ordenación segura por ID numérico descendente
   ordenadas = computed(() => {
-    return [...this.ventas()].sort((a, b) => 
+    return [...this.ventas()].sort((a, b) =>
       Number(b.id?.replace(/\D/g, '') || 0) - Number(a.id?.replace(/\D/g, '') || 0)
     );
   });
@@ -102,7 +103,7 @@ export class Ventas implements OnInit {
   // --- CICLO DE VIDA ---
   ngOnInit() {
     this.cargarVentasMunoz();
-    this.cargarInventarioMunoz(); 
+    this.cargarInventarioMunoz();
   }
 
   // --- LÓGICA DE BASE DE DATOS (MUÑOZ) ---
@@ -126,7 +127,7 @@ export class Ventas implements OnInit {
   abrirNueva() {
     // El vendedor sale por defecto de quien tiene la sesión abierta (solo lectura: el backend lo toma del token)
     this.form = { cliente: '', vendedor: this.sesion.usuario()?.nombre ?? '', metodoPago: 'Efectivo' };
-    this.carrito.set([]); 
+    this.carrito.set([]);
     this.formProducto = { id: '', cantidad: 1 };
     this.modalAbierto.set(true);
   }
@@ -137,7 +138,7 @@ export class Ventas implements OnInit {
 
   agregarAlCarritoMunoz() {
     if (!this.formProducto.id || this.formProducto.cantidad <= 0) return;
-    
+
     const prod = this.productos().find(p => p.id === Number(this.formProducto.id));
     if (!prod) return;
 
@@ -159,13 +160,13 @@ export class Ventas implements OnInit {
         this.toast.error('No hay suficiente stock para agregar más a la venta.');
         return;
       }
-      this.carrito.update(lista => lista.map(c => 
+      this.carrito.update(lista => lista.map(c =>
         c.producto_id === item.producto_id ? { ...c, cantidad: c.cantidad + item.cantidad } : c
       ));
     } else {
       this.carrito.update(lista => [...lista, item]);
     }
-    
+
     this.toast.ok(`Agregado: ${prod.nombre}`);
     this.formProducto = { id: '', cantidad: 1 };
   }
@@ -180,17 +181,23 @@ export class Ventas implements OnInit {
       return;
     }
 
+    const problemaCliente = errNombre(this.form.cliente, 'El nombre del cliente', { max: 150 });
+    if (problemaCliente) {
+      this.toast.error(problemaCliente);
+      return;
+    }
+
     const payload = {
       ...this.form,
-      total: this.totalCarrito(), 
-      carrito: this.carrito()     
+      total: this.totalCarrito(),
+      carrito: this.carrito()
     };
 
     this.http.post<any>(`${API}/ventas`, payload).subscribe({
       next: (respuesta) => {
         this.toast.ok(respuesta.mensaje || 'Venta registrada con éxito');
-        this.cargarVentasMunoz(); 
-        this.cargarInventarioMunoz(); 
+        this.cargarVentasMunoz();
+        this.cargarInventarioMunoz();
         this.modalAbierto.set(false);
       },
       error: (err) => {
@@ -212,7 +219,7 @@ export class Ventas implements OnInit {
         this.toast.ok(`Venta ${id} anulada y stock devuelto`);
         // Actualizamos estado en la lista visual
         this.ventas.update(l => l.map(v => v.id === id ? { ...v, estado: 'ANULADA' } : v));
-        this.cargarInventarioMunoz(); 
+        this.cargarInventarioMunoz();
       },
       error: (err) => {
         this.toast.error(err.error?.error || 'Hubo un error al intentar anular el comprobante.');

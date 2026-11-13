@@ -10,6 +10,8 @@ import { Vacio } from '../../ui/vacio/vacio';
 import { API } from '../../api';
 import { Sesion } from '../../services/sesion';
 import { errorRuc } from '../../utils/ruc';
+import { errCorreo, errNombre, errNombrePersona, errTelefono, errTexto, primerError } from '../../utils/validaciones';
+
 
 const FORM_VACIO = () => ({
   ruc: '', empresa: '', contacto: '', telefono: '', email: '', direccion: '', ciudad: '',
@@ -106,10 +108,15 @@ export class Proveedores implements OnInit {
     const f = this.form;
     const problemaRuc = errorRuc(f.ruc);
     if (problemaRuc) return this.errorForm.set(problemaRuc);
-    if (!f.empresa.trim()) return this.errorForm.set('Escribe el nombre de la empresa');
-    if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) {
-      return this.errorForm.set('Ese correo no parece válido');
-    }
+    const problema = primerError(
+      errNombre(f.empresa, 'El nombre de la empresa', { max: 200 }),
+      errNombrePersona(f.contacto, 'El contacto', { obligatorio: false }),
+      errTelefono(f.telefono, 'El teléfono'),
+      errCorreo(f.email, 'El correo', false),
+      errTexto(f.direccion, 'La dirección', { max: 300, obligatorio: false }),
+      errNombre(f.ciudad, 'La ciudad', { max: 100, obligatorio: false })
+    );
+    if (problema) return this.errorForm.set(problema);
 
     const dias = Number(f.diasCredito);
     if (f.condicionPago === 'CREDITO' && (!Number.isInteger(dias) || dias < 1 || dias > 365)) {
