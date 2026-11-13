@@ -29,7 +29,7 @@ const PALABRAS = [
 // Raíces: se bloquea toda palabra que EMPIECE así (pornografía, pornográfico, marihuanero...)
 const RAICES = [
   'pornograf', 'porno', 'erotic', 'prostitu', 'cocain', 'marihuan', 'heroin', 'metanfetamin', 'narcotraf',
-  'sexshop', 'masturb', 'orgasm', 'genital', 'pedofil', 'terroris', 'asesin', 'violacion', 'violador', 'sexual','pistola'
+  'sexshop', 'masturb', 'orgasm', 'genital', 'pedofil', 'terroris', 'asesin', 'violacion', 'violador', 'sexual','pistola','hijo'
 ];
 // Frases de edad / adultos escritas con símbolos
 const PATRON_ADULTOS = /(\bx{3,}\b|\+\s*18|18\s*\+|\bsolo\s+(para\s+)?adultos\b|\bpara\s+adultos\b|\bmayores?\s+de\s+18\b|\bcontenido\s+adulto\b)/i;
